@@ -5,10 +5,12 @@ import { cn } from '@/lib/utils';
 
 interface DriverCardProps {
   driver: Driver;
+  flagUrl?: string;
 }
 
-const DriverCard: React.FC<DriverCardProps> = ({ driver }) => {
+const DriverCard: React.FC<DriverCardProps> = ({ driver, flagUrl }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [flagLoaded, setFlagLoaded] = useState(false);
   const teamColor = `#${driver.team_colour}`;
   
   return (
@@ -28,8 +30,22 @@ const DriverCard: React.FC<DriverCardProps> = ({ driver }) => {
             {driver.driver_number}
           </div>
           
-          <div className="uppercase text-xs font-medium bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full">
-            {driver.country_code}
+          <div className="flex items-center uppercase text-xs font-medium bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full">
+            {flagUrl ? (
+              <div className="mr-2 w-5 h-3 relative overflow-hidden rounded-sm">
+                <img 
+                  src={flagUrl} 
+                  alt={driver.country_code || 'Flag'} 
+                  className={cn(
+                    "w-full h-full object-cover transition-opacity duration-300",
+                    flagLoaded ? "opacity-100" : "opacity-0"
+                  )}
+                  onLoad={() => setFlagLoaded(true)}
+                />
+                {!flagLoaded && <div className="absolute inset-0 bg-black/10 animate-pulse"></div>}
+              </div>
+            ) : null}
+            {driver.country_code || 'N/A'}
           </div>
         </div>
         

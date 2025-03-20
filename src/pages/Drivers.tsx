@@ -9,6 +9,32 @@ const Drivers = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [countryFlags, setCountryFlags] = useState<Record<string, string>>({});
+
+  // Fetch country flags
+  useEffect(() => {
+    const fetchCountryFlags = async () => {
+      try {
+        const response = await fetch('https://restcountries.com/v3.1/all?fields=cca3,flags');
+        if (!response.ok) {
+          throw new Error('Failed to fetch country data');
+        }
+        
+        const countries = await response.json();
+        const flagMap: Record<string, string> = {};
+        
+        countries.forEach((country: any) => {
+          flagMap[country.cca3] = country.flags.png;
+        });
+        
+        setCountryFlags(flagMap);
+      } catch (err) {
+        console.error('Error fetching country flags:', err);
+      }
+    };
+
+    fetchCountryFlags();
+  }, []);
 
   useEffect(() => {
     const fetchDrivers = async () => {
@@ -23,13 +49,8 @@ const Drivers = () => {
         
         const data: Driver[] = await response.json();
         
-        // Sort drivers by team and then by number
-        const sortedDrivers = [...data].sort((a, b) => {
-          if (a.team_name === b.team_name) {
-            return a.driver_number - b.driver_number;
-          }
-          return a.team_name.localeCompare(b.team_name);
-        });
+        // Sort drivers by driver_number
+        const sortedDrivers = [...data].sort((a, b) => a.driver_number - b.driver_number);
         
         setDrivers(sortedDrivers);
         
@@ -106,7 +127,10 @@ const Drivers = () => {
                 className="animate-scale-in" 
                 style={{ animationDelay: `${index * 50}ms` }}
               >
-                <DriverCard driver={driver} />
+                <DriverCard 
+                  driver={driver} 
+                  flagUrl={driver.country_code ? countryFlags[driver.country_code] : undefined} 
+                />
               </div>
             ))}
           </div>
