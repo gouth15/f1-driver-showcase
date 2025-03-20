@@ -8,7 +8,6 @@ import RaceControlBanner from '@/components/RaceControlBanner';
 import Navbar from '@/components/Navbar';
 
 const LiveTiming: React.FC = () => {
-  const [raceControlMessages, setRaceControlMessages] = useState<RaceControlMessage[]>([]);
   const [activeMessage, setActiveMessage] = useState<RaceControlMessage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,27 +35,16 @@ const LiveTiming: React.FC = () => {
       if (sortedMessages.length > 0 && lastMessageTimeRef.current !== sortedMessages[0].date) {
         // If this isn't the first load and we have a new message
         if (lastMessageTimeRef.current !== null) {
-          const newMessages = sortedMessages.filter(
-            msg => lastMessageTimeRef.current && new Date(msg.date) > new Date(lastMessageTimeRef.current)
-          );
-          
-          if (newMessages.length > 0) {
-            toast.info(`New race control message${newMessages.length > 1 ? 's' : ''} received`, {
-              description: newMessages[0].message
-            });
-            
-            // Show the newest message in the banner
-            setActiveMessage(newMessages[0]);
-          }
-        } else if (sortedMessages.length > 0) {
-          // First load, show the most recent message
-          setActiveMessage(sortedMessages[0]);
+          toast.info(`New race control message received`, {
+            description: sortedMessages[0].message
+          });
         }
         
+        // Show the newest message in the banner
+        setActiveMessage(sortedMessages[0]);
         lastMessageTimeRef.current = sortedMessages[0].date;
       }
       
-      setRaceControlMessages(sortedMessages);
       setLoading(false);
       setError(null);
       
@@ -92,24 +80,6 @@ const LiveTiming: React.FC = () => {
     setActiveMessage(null);
   };
   
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString(undefined, {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour12: false
-      });
-    } catch (e) {
-      return dateString;
-    }
-  };
-  
   return (
     <div className="min-h-screen bg-f1-navy text-white">
       <Navbar />
@@ -129,7 +99,7 @@ const LiveTiming: React.FC = () => {
         <div className="mb-8">
           <h1 className="text-3xl md:text-4xl font-bold mb-2">Live Timing</h1>
           <p className="text-f1-white/70">
-            View race control messages and timing data in real-time
+            View race control messages in real-time
           </p>
         </div>
         
@@ -170,67 +140,19 @@ const LiveTiming: React.FC = () => {
           </div>
         )}
         
-        {/* Messages list */}
-        {!loading && raceControlMessages.length === 0 && (
-          <div className="text-center py-12 bg-f1-navy/30 rounded-lg">
-            <p className="text-f1-white/70">No race control messages available</p>
-          </div>
-        )}
-        
-        {raceControlMessages.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-xl font-bold mb-4">Recent Race Control Messages</h2>
-            
-            {raceControlMessages.map((message, index) => (
-              <div 
-                key={`${message.date}-${index}`}
-                className="bg-f1-navy/30 backdrop-blur-sm rounded-lg overflow-hidden transition-all hover:bg-f1-navy/50"
-              >
-                <div className="p-4">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium mr-2 ${
-                        message.category === 'Flag' ? 'bg-yellow-500 text-black' :
-                        message.category === 'Car Event' ? 'bg-orange-600' :
-                        'bg-blue-600'
-                      }`}>
-                        {message.category}
-                      </span>
-                      
-                      {message.flag && (
-                        <span className="px-3 py-1 bg-gray-700 rounded-full text-xs font-medium">
-                          {message.flag}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <time className="text-xs text-f1-white/60 font-mono">
-                      {formatDate(message.date)}
-                    </time>
-                  </div>
-                  
-                  <p className="font-mono text-sm md:text-base">
-                    {message.message}
-                  </p>
-                  
-                  {(message.lap_number || message.sector || message.driver_number) && (
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-f1-white/70">
-                      {message.lap_number && (
-                        <span>Lap: {message.lap_number}</span>
-                      )}
-                      {message.sector && (
-                        <span>Sector: {message.sector}</span>
-                      )}
-                      {message.driver_number && (
-                        <span>Driver: {message.driver_number}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Status message */}
+        <div className="text-center py-12 bg-f1-navy/30 rounded-lg">
+          <p className="text-f1-white/70">
+            {isPolling 
+              ? "Listening for race control messages..." 
+              : "Polling is paused. Click 'Live: Off' to resume."}
+          </p>
+          {activeMessage && (
+            <p className="mt-4 text-f1-white font-medium">
+              Latest message displayed as banner
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
