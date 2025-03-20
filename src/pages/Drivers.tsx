@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Driver } from '@/types/f1';
 import Navbar from '@/components/Navbar';
 import DriverCard from '@/components/DriverCard';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 
 const Drivers = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
