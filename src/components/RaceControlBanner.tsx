@@ -26,7 +26,7 @@ const RaceControlBanner: React.FC<RaceControlBannerProps> = ({
       // Wait for animation to complete before calling onComplete
       const exitTimer = setTimeout(() => {
         if (onComplete) onComplete();
-      }, 600); // 600ms to match animation duration
+      }, 800); // 800ms to match animation duration
       
       return () => clearTimeout(exitTimer);
     }, 3000);
@@ -86,18 +86,17 @@ const RaceControlBanner: React.FC<RaceControlBannerProps> = ({
   return (
     <div 
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-600",
-        "transform origin-top",
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-800",
+        "transform-gpu",
         getBannerColor(),
         visible 
-          ? "translate-y-0 opacity-100 scale-100" 
-          : "-translate-y-4 opacity-0 scale-98",
+          ? "translate-y-16 opacity-100 scale-100" 
+          : "-translate-y-full opacity-0 scale-95",
         "shadow-lg"
       )}
-      style={{ marginTop: '64px' }} // To appear below the navbar
     >
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center">
-        <div className="flex-shrink-0 mr-3 animate-pulse">
+        <div className="flex-shrink-0 mr-3 animate-bounce">
           {getIcon()}
         </div>
         <div className="flex-1 font-mono">
