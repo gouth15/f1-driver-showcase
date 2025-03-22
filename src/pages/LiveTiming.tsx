@@ -1,25 +1,28 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { toast } from 'sonner';
-import { RaceControlMessage, DriverPosition, Driver } from '@/types/f1';
+import { RaceControlMessage, DriverPosition, Driver, TeamRadioMessage } from '@/types/f1';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Clock } from 'lucide-react';
+import { AlertCircle, Clock, ChevronUp, ChevronDown, User } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import PositionCard from '@/components/PositionCard';
 import RaceControlBanner from '@/components/RaceControlBanner';
+import TeamRadioPlayer from '@/components/TeamRadioPlayer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getDriverByNumber } from '@/data/drivers';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const LiveTiming: React.FC = () => {
   const [driverPositions, setDriverPositions] = useState<DriverPosition[]>([]);
   const [previousPositions, setPreviousPositions] = useState<Record<number, number>>({});
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(true);
   const [currentRCMessage, setCurrentRCMessage] = useState<RaceControlMessage | null>(null);
+  const [teamRadios, setTeamRadios] = useState<TeamRadioMessage[]>([]);
   const pollingIntervalRef = useRef<number | null>(null);
   const lastMessageTimeRef = useRef<string | null>(null);
   
-  // Function to fetch race control messages
+  // Function to fetch race control messages and team radios
   const fetchRaceControlMessages = useCallback(async () => {
     try {
       const response = await fetch('https://api.openf1.org/v1/race_control?session_key=latest');
@@ -28,27 +31,62 @@ const LiveTiming: React.FC = () => {
         throw new Error(`Failed to fetch race control messages: ${response.status}`);
       }
       
-      const data: RaceControlMessage[] = await response.json();
+      const data = await response.json();
       
-      // Sort by date (newest first)
-      const sortedMessages = [...data].sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-
-      // Check if we have a new message
-      if (sortedMessages.length > 0 && lastMessageTimeRef.current !== sortedMessages[0].date) {
-        // Set the banner message
-        setCurrentRCMessage(sortedMessages[0]);
+      // Process race control messages
+      const raceControlMessages: RaceControlMessage[] = data.filter((item: any) => item.message);
+      
+      // Process team radio messages
+      const teamRadioMessages: TeamRadioMessage[] = data.filter((item: any) => item.recording_url);
+      
+      if (teamRadioMessages.length > 0) {
+        // Sort team radios by date (newest first)
+        const sortedTeamRadios = [...teamRadioMessages].sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
         
-        // Update lastMessageTime ref
-        lastMessageTimeRef.current = sortedMessages[0].date;
+        setTeamRadios(sortedTeamRadios);
+      }
+      
+      // Sort race control messages by date (newest first)
+      if (raceControlMessages.length > 0) {
+        const sortedMessages = [...raceControlMessages].sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+
+        // Check if we have a new message
+        if (sortedMessages.length > 0 && lastMessageTimeRef.current !== sortedMessages[0].date) {
+          // Set the banner message
+          setCurrentRCMessage(sortedMessages[0]);
+          
+          // Update lastMessageTime ref
+          lastMessageTimeRef.current = sortedMessages[0].date;
+        }
       }
       
       setError(null);
       
     } catch (err) {
-      console.error('Error fetching race control messages:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch race control messages');
+      console.error('Error fetching race control data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch race control data');
+    }
+  }, []);
+
+  // Function to fetch driver information
+  const fetchDrivers = useCallback(async () => {
+    try {
+      const response = await fetch('https://api.openf1.org/v1/drivers?session_key=latest');
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch drivers: ${response.status}`);
+      }
+      
+      const data: Driver[] = await response.json();
+      setDrivers(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching drivers:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch drivers');
     }
   }, []);
 
@@ -103,15 +141,17 @@ const LiveTiming: React.FC = () => {
   useEffect(() => {
     // Initial fetch
     fetchRaceControlMessages();
+    fetchDrivers();
     fetchDriverPositions();
     
-    // Set up polling interval (every 1 second)
+    // Set up polling interval (every 2 seconds)
     pollingIntervalRef.current = window.setInterval(() => {
       if (isPolling) {
         fetchRaceControlMessages();
+        fetchDrivers();
         fetchDriverPositions();
       }
-    }, 1000);
+    }, 2000); // Changed to 2 seconds as requested
     
     // Clean up on unmount
     return () => {
@@ -119,7 +159,7 @@ const LiveTiming: React.FC = () => {
         window.clearInterval(pollingIntervalRef.current);
       }
     };
-  }, [fetchRaceControlMessages, fetchDriverPositions, isPolling]);
+  }, [fetchRaceControlMessages, fetchDrivers, fetchDriverPositions, isPolling]);
 
   // Handle banner completion
   const handleBannerComplete = () => {
@@ -134,6 +174,26 @@ const LiveTiming: React.FC = () => {
     if (currentPosition < prevPosition) return 'improved';
     if (currentPosition > prevPosition) return 'worsened';
     return 'unchanged';
+  };
+
+  // Get driver by number
+  const getDriverByNumber = (driverNumber: number): Driver | undefined => {
+    return drivers.find(driver => driver.driver_number === driverNumber);
+  };
+  
+  // Format the time
+  const formatTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString(undefined, { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: false
+      });
+    } catch (e) {
+      return '';
+    }
   };
   
   return (
@@ -159,28 +219,34 @@ const LiveTiming: React.FC = () => {
           </p>
         </div>
         
-        {/* Polling control */}
-        <div className="mb-6 flex items-center">
-          <button
-            onClick={() => setIsPolling(!isPolling)}
-            className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              isPolling ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
-            }`}
-          >
-            <Clock className="mr-2 h-4 w-4" />
-            {isPolling ? 'Live: On' : 'Live: Off'}
-          </button>
-          {!isPolling && (
+        {/* Controls - Polling control and Team Radio */}
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                fetchRaceControlMessages();
-                fetchDriverPositions();
-              }}
-              className="ml-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-full text-sm font-medium transition-colors"
+              onClick={() => setIsPolling(!isPolling)}
+              className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                isPolling ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+              }`}
             >
-              Refresh Now
+              <Clock className="mr-2 h-4 w-4" />
+              {isPolling ? 'Live: On' : 'Live: Off'}
             </button>
-          )}
+            {!isPolling && (
+              <button
+                onClick={() => {
+                  fetchRaceControlMessages();
+                  fetchDrivers();
+                  fetchDriverPositions();
+                }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-full text-sm font-medium transition-colors"
+              >
+                Refresh Now
+              </button>
+            )}
+          </div>
+          
+          {/* Team Radio Button */}
+          <TeamRadioPlayer teamRadios={teamRadios} drivers={drivers} />
         </div>
         
         {/* Error state */}
@@ -199,26 +265,95 @@ const LiveTiming: React.FC = () => {
           </div>
         )}
         
-        {/* Driver position cards */}
+        {/* Driver position rows */}
         {!loading && driverPositions.length > 0 && (
-          <div className="space-y-4">
-            <Card className="bg-f1-navy/50 border-f1-silver/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-f1-white">Current Positions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {driverPositions.map((position) => (
-                    <PositionCard 
-                      key={position.driver_number} 
-                      position={position}
-                      driver={getDriverByNumber(position.driver_number)}
-                      positionChange={getPositionChange(position.driver_number, position.position)}
-                    />
-                  ))}
+          <div className="space-y-2">
+            {driverPositions.map((position) => {
+              const driver = getDriverByNumber(position.driver_number);
+              const positionChange = getPositionChange(position.driver_number, position.position);
+              const teamColor = driver?.team_colour || '#FFFFFF';
+              const isNew = previousPositions[position.driver_number] !== undefined;
+              
+              return (
+                <div 
+                  key={position.driver_number}
+                  className={cn(
+                    "p-4 rounded-lg overflow-hidden transition-all duration-500",
+                    "bg-f1-navy/60 border border-f1-silver/20 flex items-center",
+                    positionChange === 'improved' && "border-l-green-500 border-l-4 animate-slide-in-right",
+                    positionChange === 'worsened' && "border-l-red-500 border-l-4 animate-slide-in-right"
+                  )}
+                >
+                  {/* Position number */}
+                  <div className={cn(
+                    "flex items-center justify-center min-w-[3rem] h-12 rounded-full font-bold text-xl mr-4",
+                    "bg-white/10 text-white"
+                  )}>
+                    {position.position}
+                  </div>
+                  
+                  {/* Driver avatar and info */}
+                  <div className="flex items-center flex-1">
+                    <Avatar className="h-12 w-12 mr-3 border-2" style={{ borderColor: teamColor }}>
+                      {driver?.headshot_url ? (
+                        <AvatarImage src={driver.headshot_url} alt={driver?.full_name || `Driver #${position.driver_number}`} />
+                      ) : (
+                        <AvatarFallback className="bg-f1-navy/80">
+                          <User className="h-6 w-6 text-f1-silver" />
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <span className="text-lg font-bold">
+                          {driver ? (
+                            <span>{driver.name_acronym}</span>
+                          ) : (
+                            <span>#{position.driver_number}</span>
+                          )}
+                        </span>
+                        <span className="ml-2 text-sm text-f1-silver/70">
+                          {position.driver_number}
+                        </span>
+                      </div>
+                      
+                      {driver && (
+                        <div className="text-sm text-f1-silver/80 flex items-center">
+                          <div 
+                            className="h-3 w-3 rounded-full mr-1"
+                            style={{ backgroundColor: teamColor }}
+                          ></div>
+                          {driver.team_name}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Position change indicator */}
+                  <div className="flex flex-col items-end ml-2">
+                    {positionChange === 'improved' && (
+                      <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500">
+                        <ChevronUp className="h-3 w-3 mr-1" />
+                        Gained
+                      </Badge>
+                    )}
+                    {positionChange === 'worsened' && (
+                      <Badge variant="outline" className="bg-red-500/20 text-red-400 border-red-500">
+                        <ChevronDown className="h-3 w-3 mr-1" />
+                        Lost
+                      </Badge>
+                    )}
+                    
+                    {/* Last update time */}
+                    <div className="text-xs text-f1-silver/70 mt-1 flex items-center">
+                      <Clock className="h-3 w-3 mr-1" />
+                      {formatTime(position.date)}
+                    </div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
+              );
+            })}
           </div>
         )}
         
