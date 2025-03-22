@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
-import { RaceControlMessage, DriverPosition } from '@/types/f1';
+import { RaceControlMessage, DriverPosition, Driver } from '@/types/f1';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Clock } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import PositionCard from '@/components/PositionCard';
+import RaceControlBanner from '@/components/RaceControlBanner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getDriverByNumber } from '@/data/drivers';
 
@@ -14,6 +15,7 @@ const LiveTiming: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(true);
+  const [currentRCMessage, setCurrentRCMessage] = useState<RaceControlMessage | null>(null);
   const pollingIntervalRef = useRef<number | null>(null);
   const lastMessageTimeRef = useRef<string | null>(null);
   
@@ -35,20 +37,10 @@ const LiveTiming: React.FC = () => {
 
       // Check if we have a new message
       if (sortedMessages.length > 0 && lastMessageTimeRef.current !== sortedMessages[0].date) {
-        // Only show toast if this isn't the first load
-        if (lastMessageTimeRef.current !== null) {
-          let messageContent = sortedMessages[0].message;
-          
-          // Optional: Format the message a bit nicer if it's all caps
-          if (messageContent === messageContent.toUpperCase()) {
-            messageContent = messageContent.charAt(0) + messageContent.slice(1).toLowerCase();
-          }
-          
-          toast.info("Race Control Message", {
-            description: messageContent
-          });
-        }
+        // Set the banner message
+        setCurrentRCMessage(sortedMessages[0]);
         
+        // Update lastMessageTime ref
         lastMessageTimeRef.current = sortedMessages[0].date;
       }
       
@@ -129,6 +121,11 @@ const LiveTiming: React.FC = () => {
     };
   }, [fetchRaceControlMessages, fetchDriverPositions, isPolling]);
 
+  // Handle banner completion
+  const handleBannerComplete = () => {
+    setCurrentRCMessage(null);
+  };
+
   // Determine if a position has changed (improved, worsened, or unchanged)
   const getPositionChange = (driverNumber: number, currentPosition: number): 'improved' | 'worsened' | 'unchanged' => {
     const prevPosition = previousPositions[driverNumber];
@@ -142,6 +139,14 @@ const LiveTiming: React.FC = () => {
   return (
     <div className="min-h-screen bg-f1-navy text-white">
       <Navbar />
+      
+      {/* Race Control Banner */}
+      {currentRCMessage && (
+        <RaceControlBanner 
+          message={currentRCMessage} 
+          onComplete={handleBannerComplete}
+        />
+      )}
       
       {/* Top spacing for fixed navbar */}
       <div className="h-20"></div>
@@ -202,7 +207,7 @@ const LiveTiming: React.FC = () => {
                 <CardTitle className="text-f1-white">Current Positions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
                   {driverPositions.map((position) => (
                     <PositionCard 
                       key={position.driver_number} 

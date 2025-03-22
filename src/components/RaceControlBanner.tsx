@@ -16,19 +16,20 @@ const RaceControlBanner: React.FC<RaceControlBannerProps> = ({
   const [visible, setVisible] = useState(false);
   
   useEffect(() => {
+    // Entry animation
     setVisible(true);
     
-    // Display for 5 seconds then fade out
+    // Display for 3 seconds then fade out
     const timer = setTimeout(() => {
       setVisible(false);
       
       // Wait for animation to complete before calling onComplete
       const exitTimer = setTimeout(() => {
         if (onComplete) onComplete();
-      }, 500); // 500ms to match animation duration
+      }, 600); // 600ms to match animation duration
       
       return () => clearTimeout(exitTimer);
-    }, 5000);
+    }, 3000);
     
     return () => clearTimeout(timer);
   }, [message, onComplete]);
@@ -85,19 +86,25 @@ const RaceControlBanner: React.FC<RaceControlBannerProps> = ({
   return (
     <div 
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-500 transform",
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-600",
+        "transform origin-top",
         getBannerColor(),
-        visible ? "translate-y-0" : "-translate-y-full",
+        visible 
+          ? "translate-y-0 opacity-100 scale-100" 
+          : "-translate-y-4 opacity-0 scale-98",
         "shadow-lg"
       )}
       style={{ marginTop: '64px' }} // To appear below the navbar
     >
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center">
-        <div className="flex-shrink-0 mr-3">
+        <div className="flex-shrink-0 mr-3 animate-pulse">
           {getIcon()}
         </div>
         <div className="flex-1 font-mono">
-          <p className="text-sm md:text-base font-semibold">
+          <p className={cn(
+            "text-sm md:text-base font-semibold",
+            visible && "animate-slide-up"
+          )}>
             {message.message}
           </p>
         </div>
