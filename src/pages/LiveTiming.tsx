@@ -3,14 +3,13 @@ import { toast } from 'sonner';
 import { RaceControlMessage, DriverPosition } from '@/types/f1';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Clock, Trophy, ChevronUp, ChevronDown } from 'lucide-react';
-import RaceControlBanner from '@/components/RaceControlBanner';
 import Navbar from '@/components/Navbar';
 import PositionCard from '@/components/PositionCard';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { drivers, getDriverByNumber } from '@/data/drivers';
 
 const LiveTiming: React.FC = () => {
-  const [activeMessage, setActiveMessage] = useState<RaceControlMessage | null>(null);
   const [driverPositions, setDriverPositions] = useState<DriverPosition[]>([]);
   const [previousPositions, setPreviousPositions] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
@@ -37,15 +36,20 @@ const LiveTiming: React.FC = () => {
 
       // Check if we have a new message
       if (sortedMessages.length > 0 && lastMessageTimeRef.current !== sortedMessages[0].date) {
-        // If this isn't the first load and we have a new message
+        // Only show toast if this isn't the first load
         if (lastMessageTimeRef.current !== null) {
-          toast.info(`New race control message received`, {
-            description: sortedMessages[0].message
+          let messageContent = sortedMessages[0].message;
+          
+          // Optional: Format the message a bit nicer if it's all caps
+          if (messageContent === messageContent.toUpperCase()) {
+            messageContent = messageContent.charAt(0) + messageContent.slice(1).toLowerCase();
+          }
+          
+          toast.info("Race Control Message", {
+            description: messageContent
           });
         }
         
-        // Show the newest message in the banner
-        setActiveMessage(sortedMessages[0]);
         lastMessageTimeRef.current = sortedMessages[0].date;
       }
       
@@ -110,13 +114,13 @@ const LiveTiming: React.FC = () => {
     fetchRaceControlMessages();
     fetchDriverPositions();
     
-    // Set up polling interval (every 5 seconds)
+    // Set up polling interval (every 1 second)
     pollingIntervalRef.current = window.setInterval(() => {
       if (isPolling) {
         fetchRaceControlMessages();
         fetchDriverPositions();
       }
-    }, 5000);
+    }, 1000);
     
     // Clean up on unmount
     return () => {
@@ -125,11 +129,6 @@ const LiveTiming: React.FC = () => {
       }
     };
   }, [fetchRaceControlMessages, fetchDriverPositions, isPolling]);
-  
-  // Handle banner completion (when animation completes)
-  const handleBannerComplete = () => {
-    setActiveMessage(null);
-  };
 
   // Determine if a position has changed (improved, worsened, or unchanged)
   const getPositionChange = (driverNumber: number, currentPosition: number): 'improved' | 'worsened' | 'unchanged' => {
@@ -147,14 +146,6 @@ const LiveTiming: React.FC = () => {
       
       {/* Top spacing for fixed navbar */}
       <div className="h-20"></div>
-      
-      {/* Race Control Message Banner */}
-      {activeMessage && (
-        <RaceControlBanner 
-          message={activeMessage} 
-          onComplete={handleBannerComplete}
-        />
-      )}
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
@@ -219,6 +210,7 @@ const LiveTiming: React.FC = () => {
                 <CardContent>
                   <PositionCard 
                     position={driverPositions[0]} 
+                    driver={getDriverByNumber(driverPositions[0].driver_number)}
                     isLeader={true}
                     positionChange={getPositionChange(driverPositions[0].driver_number, driverPositions[0].position)}
                   />
@@ -226,16 +218,25 @@ const LiveTiming: React.FC = () => {
               </Card>
             )}
             
-            {/* Position grid for all other drivers */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {driverPositions.slice(1).map((position) => (
-                <PositionCard 
-                  key={position.driver_number} 
-                  position={position}
-                  positionChange={getPositionChange(position.driver_number, position.position)}
-                />
-              ))}
-            </div>
+            {/* Position rows for all other drivers */}
+            <Card className="bg-f1-navy/50 border-f1-silver/20">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-f1-white">Current Positions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {driverPositions.slice(1).map((position) => (
+                    <PositionCard 
+                      key={position.driver_number} 
+                      position={position}
+                      driver={getDriverByNumber(position.driver_number)}
+                      positionChange={getPositionChange(position.driver_number, position.position)}
+                      layout="row"
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
             
             {/* Table view */}
             <Card className="mt-8 bg-f1-navy/50 border-f1-silver/20">
@@ -247,7 +248,8 @@ const LiveTiming: React.FC = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Pos</TableHead>
-                      <TableHead>Driver #</TableHead>
+                      <TableHead>Driver</TableHead>
+                      <TableHead>Team</TableHead>
                       <TableHead>Change</TableHead>
                       <TableHead>Last Update</TableHead>
                     </TableRow>
@@ -255,12 +257,38 @@ const LiveTiming: React.FC = () => {
                   <TableBody>
                     {driverPositions.map((position) => {
                       const posChange = getPositionChange(position.driver_number, position.position);
+                      const driver = getDriverByNumber(position.driver_number);
                       return (
-                        <TableRow key={position.driver_number}>
-                          <TableCell className="font-mono font-bold">
+                        <TableRow key={position.driver_number} className={position.position === 1 ? "bg-yellow-950/30" : ""}>
+                          <TableCell className={`font-mono font-bold ${position.position === 1 ? "text-yellow-400" : ""}`}>
                             {position.position}
                           </TableCell>
-                          <TableCell>{position.driver_number}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {driver ? (
+                                <>
+                                  <span>{driver.name_acronym}</span>
+                                  <span className="text-sm text-f1-silver/70">({position.driver_number})</span>
+                                </>
+                              ) : (
+                                <span>Driver #{position.driver_number}</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {driver ? (
+                              <span 
+                                className="px-2 py-1 rounded text-xs" 
+                                style={{ 
+                                  backgroundColor: `${driver.team_colour}20`,
+                                  color: driver.team_colour,
+                                  border: `1px solid ${driver.team_colour}40`
+                                }}
+                              >
+                                {driver.team_name}
+                              </span>
+                            ) : "Unknown"}
+                          </TableCell>
                           <TableCell>
                             {posChange === 'improved' && (
                               <div className="flex items-center text-green-500">
