@@ -2,12 +2,11 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { RaceControlMessage, DriverPosition } from '@/types/f1';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Clock, Trophy, ChevronUp, ChevronDown } from 'lucide-react';
+import { AlertCircle, Clock } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import PositionCard from '@/components/PositionCard';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { drivers, getDriverByNumber } from '@/data/drivers';
+import { getDriverByNumber } from '@/data/drivers';
 
 const LiveTiming: React.FC = () => {
   const [driverPositions, setDriverPositions] = useState<DriverPosition[]>([]);
@@ -195,125 +194,24 @@ const LiveTiming: React.FC = () => {
           </div>
         )}
         
-        {/* Live timing positions */}
+        {/* Driver position cards */}
         {!loading && driverPositions.length > 0 && (
-          <div className="space-y-6">
-            {/* Leader spotlight */}
-            {driverPositions.length > 0 && (
-              <Card className="bg-gradient-to-r from-yellow-500/20 to-yellow-700/10 border-yellow-500/50 overflow-hidden">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-yellow-400">
-                    <Trophy className="h-5 w-5" />
-                    Race Leader
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <PositionCard 
-                    position={driverPositions[0]} 
-                    driver={getDriverByNumber(driverPositions[0].driver_number)}
-                    isLeader={true}
-                    positionChange={getPositionChange(driverPositions[0].driver_number, driverPositions[0].position)}
-                  />
-                </CardContent>
-              </Card>
-            )}
-            
-            {/* Position rows for all other drivers */}
+          <div className="space-y-4">
             <Card className="bg-f1-navy/50 border-f1-silver/20">
               <CardHeader className="pb-2">
                 <CardTitle className="text-f1-white">Current Positions</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-1">
-                  {driverPositions.slice(1).map((position) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {driverPositions.map((position) => (
                     <PositionCard 
                       key={position.driver_number} 
                       position={position}
                       driver={getDriverByNumber(position.driver_number)}
                       positionChange={getPositionChange(position.driver_number, position.position)}
-                      layout="row"
                     />
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-            
-            {/* Table view */}
-            <Card className="mt-8 bg-f1-navy/50 border-f1-silver/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-f1-white">Positions Table</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Pos</TableHead>
-                      <TableHead>Driver</TableHead>
-                      <TableHead>Team</TableHead>
-                      <TableHead>Change</TableHead>
-                      <TableHead>Last Update</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {driverPositions.map((position) => {
-                      const posChange = getPositionChange(position.driver_number, position.position);
-                      const driver = getDriverByNumber(position.driver_number);
-                      return (
-                        <TableRow key={position.driver_number} className={position.position === 1 ? "bg-yellow-950/30" : ""}>
-                          <TableCell className={`font-mono font-bold ${position.position === 1 ? "text-yellow-400" : ""}`}>
-                            {position.position}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {driver ? (
-                                <>
-                                  <span>{driver.name_acronym}</span>
-                                  <span className="text-sm text-f1-silver/70">({position.driver_number})</span>
-                                </>
-                              ) : (
-                                <span>Driver #{position.driver_number}</span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {driver ? (
-                              <span 
-                                className="px-2 py-1 rounded text-xs" 
-                                style={{ 
-                                  backgroundColor: `${driver.team_colour}20`,
-                                  color: driver.team_colour,
-                                  border: `1px solid ${driver.team_colour}40`
-                                }}
-                              >
-                                {driver.team_name}
-                              </span>
-                            ) : "Unknown"}
-                          </TableCell>
-                          <TableCell>
-                            {posChange === 'improved' && (
-                              <div className="flex items-center text-green-500">
-                                <ChevronUp className="h-4 w-4 mr-1" />
-                                Gained
-                              </div>
-                            )}
-                            {posChange === 'worsened' && (
-                              <div className="flex items-center text-red-500">
-                                <ChevronDown className="h-4 w-4 mr-1" />
-                                Lost
-                              </div>
-                            )}
-                            {posChange === 'unchanged' && (
-                              <span className="text-f1-silver">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-xs text-f1-silver/70">
-                            {new Date(position.date).toLocaleTimeString()}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
               </CardContent>
             </Card>
           </div>
