@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RaceControlMessage, DriverPosition, Driver, TeamRadioMessage } from '@/types/f1';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
@@ -22,7 +23,7 @@ const LiveTiming: React.FC = () => {
   const pollingIntervalRef = useRef<number | null>(null);
   const lastMessageTimeRef = useRef<string | null>(null);
   
-  // Function to fetch race control messages and team radios
+  // Function to fetch race control messages
   const fetchRaceControlMessages = useCallback(async () => {
     try {
       const response = await fetch('https://api.openf1.org/v1/race_control?session_key=latest');
@@ -35,18 +36,6 @@ const LiveTiming: React.FC = () => {
       
       // Process race control messages
       const raceControlMessages: RaceControlMessage[] = data.filter((item: any) => item.message);
-      
-      // Process team radio messages
-      const teamRadioMessages: TeamRadioMessage[] = data.filter((item: any) => item.recording_url);
-      
-      if (teamRadioMessages.length > 0) {
-        // Sort team radios by date (newest first)
-        const sortedTeamRadios = [...teamRadioMessages].sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        
-        setTeamRadios(sortedTeamRadios);
-      }
       
       // Sort race control messages by date (newest first)
       if (raceControlMessages.length > 0) {
@@ -69,6 +58,33 @@ const LiveTiming: React.FC = () => {
     } catch (err) {
       console.error('Error fetching race control data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch race control data');
+    }
+  }, []);
+
+  // Function to fetch team radio messages
+  const fetchTeamRadioMessages = useCallback(async () => {
+    try {
+      const response = await fetch('https://api.openf1.org/v1/team_radio?session_key=latest');
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch team radio messages: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Process team radio messages
+      if (data.length > 0) {
+        // Sort team radios by date (newest first)
+        const sortedTeamRadios = [...data].sort((a, b) => 
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        );
+        
+        setTeamRadios(sortedTeamRadios);
+      }
+      
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching team radio data:', err);
     }
   }, []);
 
@@ -141,6 +157,7 @@ const LiveTiming: React.FC = () => {
   useEffect(() => {
     // Initial fetch
     fetchRaceControlMessages();
+    fetchTeamRadioMessages();
     fetchDrivers();
     fetchDriverPositions();
     
@@ -148,10 +165,11 @@ const LiveTiming: React.FC = () => {
     pollingIntervalRef.current = window.setInterval(() => {
       if (isPolling) {
         fetchRaceControlMessages();
+        fetchTeamRadioMessages();
         fetchDrivers();
         fetchDriverPositions();
       }
-    }, 2000); // Changed to 2 seconds as requested
+    }, 2000); // 2 seconds polling interval
     
     // Clean up on unmount
     return () => {
@@ -159,7 +177,7 @@ const LiveTiming: React.FC = () => {
         window.clearInterval(pollingIntervalRef.current);
       }
     };
-  }, [fetchRaceControlMessages, fetchDrivers, fetchDriverPositions, isPolling]);
+  }, [fetchRaceControlMessages, fetchTeamRadioMessages, fetchDrivers, fetchDriverPositions, isPolling]);
 
   // Handle banner completion
   const handleBannerComplete = () => {
@@ -235,6 +253,7 @@ const LiveTiming: React.FC = () => {
               <button
                 onClick={() => {
                   fetchRaceControlMessages();
+                  fetchTeamRadioMessages();
                   fetchDrivers();
                   fetchDriverPositions();
                 }}

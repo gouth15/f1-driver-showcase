@@ -7,18 +7,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Driver } from '@/types/f1';
+import { Driver, TeamRadioMessage } from '@/types/f1';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Headphones, Play, Pause, User, Volume2 } from 'lucide-react';
-
-interface TeamRadioMessage {
-  date: string;
-  driver_number: number;
-  meeting_key: number;
-  recording_url: string;
-  session_key: number;
-}
 
 interface TeamRadioPlayerProps {
   teamRadios: TeamRadioMessage[];
