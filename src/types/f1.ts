@@ -1,64 +1,27 @@
-
-export interface Driver {
-  broadcast_name: string;
-  country_code: string;
-  driver_number: number;
-  first_name: string;
-  full_name: string;
-  headshot_url: string;
-  last_name: string;
-  meeting_key: number;
-  name_acronym: string;
-  session_key: number;
-  team_colour: string;
-  team_name: string;
-}
-
-export interface Session {
-  session_key: number;
-  meeting_key: number;
-  name: string;
-  status: string;
-  session_type: string;
-}
-
-export interface Timing {
-  driver_number: number;
-  lap_number: number;
-  lap_time: number;
-  position: number;
-  sectors: {
-    sector1: number;
-    sector2: number;
-    sector3: number;
-  };
-}
-
 export interface RaceControlMessage {
-  category: string;
+  category?: string;
   date: string;
-  driver_number: number | null;
-  flag: string | null;
-  lap_number: number | null;
-  meeting_key: number;
+  flag?: string;
   message: string;
-  scope: string;
-  sector: number | null;
-  session_key: number;
+  // Other properties as needed
 }
 
 export interface DriverPosition {
   date: string;
   driver_number: number;
-  meeting_key: number;
   position: number;
-  session_key: number;
+  // Other properties as needed
 }
 
-export interface TeamRadioMessage {
-  date: string;
+export interface Driver {
   driver_number: number;
-  meeting_key: number;
-  recording_url: string;
-  session_key: number;
+  name_acronym: string;
+  full_name: string;
+  first_name: string;
+  last_name: string;
+  country_code?: string;
+  team_name: string;
+  team_colour: string;
+  headshot_url: string;
+  // Other properties as needed
 }
