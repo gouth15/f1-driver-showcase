@@ -1,3 +1,4 @@
+
 export interface RaceControlMessage {
   category?: string;
   date: string;
@@ -46,4 +47,12 @@ export interface LapData {
   segments_sector_3?: number[];
   session_key: number;
   st_speed?: number;
+}
+
+// Demo data interfaces for simulation
+export interface DemoState {
+  drivers: Driver[];
+  positions: DriverPosition[];
+  lapData: Record<number, LapData>;
+  messages: RaceControlMessage[];
 }
