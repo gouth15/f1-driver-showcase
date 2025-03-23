@@ -1,10 +1,9 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RaceControlMessage, DriverPosition, Driver } from '@/types/f1';
-import { Clock, ChevronUp, ChevronDown, User } from 'lucide-react';
+import { Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Navbar from '@/components/Navbar';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 const LiveTiming: React.FC = () => {
@@ -23,7 +22,7 @@ const LiveTiming: React.FC = () => {
       const response = await fetch('https://api.openf1.org/v1/race_control?session_key=latest');
       
       if (!response.ok) {
-        return; // Silently ignore error
+        return;
       }
       
       const data = await response.json();
@@ -61,7 +60,7 @@ const LiveTiming: React.FC = () => {
       const response = await fetch('https://api.openf1.org/v1/drivers?session_key=latest');
       
       if (!response.ok) {
-        return; // Silently ignore error
+        return;
       }
       
       const data: Driver[] = await response.json();
@@ -77,7 +76,7 @@ const LiveTiming: React.FC = () => {
       const response = await fetch('https://api.openf1.org/v1/position?session_key=latest');
       
       if (!response.ok) {
-        return; // Silently ignore error
+        return;
       }
       
       const data: DriverPosition[] = await response.json();
@@ -219,9 +218,9 @@ const LiveTiming: React.FC = () => {
           </div>
         )}
         
-        {/* Driver position grid with smaller layout */}
+        {/* Driver position table - displayed as rows */}
         {!loading && driverPositions.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+          <div className="space-y-1">
             {driverPositions.map((position) => {
               const driver = getDriverByNumber(position.driver_number);
               const positionChange = getPositionChange(position.driver_number, position.position);
@@ -231,49 +230,60 @@ const LiveTiming: React.FC = () => {
                 <div 
                   key={position.driver_number}
                   className={cn(
-                    "p-3 rounded-lg overflow-hidden transition-all duration-500",
-                    "bg-f1-navy/60 border border-f1-silver/20 flex items-center",
-                    positionChange === 'improved' && "border-l-green-500 border-l-4 animate-slide-in-right",
-                    positionChange === 'worsened' && "border-l-red-500 border-l-4 animate-slide-in-right"
+                    "p-2 rounded-md border-l-4 flex items-center transition-all duration-300 h-12",
+                    "bg-f1-navy/60 border-f1-silver/20",
+                    positionChange === 'improved' && "border-l-green-500 animate-slide-in-right",
+                    positionChange === 'worsened' && "border-l-red-500 animate-slide-in-right",
+                    positionChange === 'improved' && "transform -translate-y-1",
+                    positionChange === 'worsened' && "transform translate-y-1"
                   )}
-                  style={{ borderLeft: `4px solid ${teamColor}` }}
+                  style={{ borderLeftColor: teamColor }}
                 >
                   {/* Position number */}
-                  <div className={cn(
-                    "flex items-center justify-center min-w-[2rem] h-8 rounded-full font-bold text-xl mr-2",
-                    "bg-white/10 text-white"
-                  )}>
+                  <div className="min-w-[1.5rem] text-center font-bold mr-3">
                     {position.position}
                   </div>
                   
-                  {/* Driver info without photo */}
-                  <div className="flex-1 min-w-0">
+                  {/* Driver number */}
+                  <div 
+                    className="min-w-[2.5rem] h-8 flex items-center justify-center font-bold rounded px-2 mr-2"
+                    style={{ backgroundColor: teamColor, color: '#FFFFFF' }}
+                  >
+                    {position.driver_number}
+                  </div>
+                  
+                  {/* Driver name and team */}
+                  <div className="flex-1 flex items-center">
                     <div className="flex flex-col">
-                      <span className="text-base font-bold truncate" style={{ color: teamColor }}>
+                      <span className="font-bold text-sm md:text-base">
                         {driver ? driver.name_acronym : `#${position.driver_number}`}
                       </span>
                       
                       {driver && (
-                        <div className="text-xs text-f1-silver/80 truncate">
+                        <span className="text-xs text-f1-silver/80">
                           {driver.team_name}
-                        </div>
+                        </span>
                       )}
                     </div>
                   </div>
                   
                   {/* Position change indicator */}
-                  <div className="flex flex-col items-end ml-1">
+                  <div className="flex items-center mr-2">
                     {positionChange === 'improved' && (
-                      <ChevronUp className="h-3 w-3 text-green-400" />
+                      <div className="flex items-center text-green-400">
+                        <ChevronUp className="h-4 w-4" />
+                      </div>
                     )}
                     {positionChange === 'worsened' && (
-                      <ChevronDown className="h-3 w-3 text-red-400" />
+                      <div className="flex items-center text-red-400">
+                        <ChevronDown className="h-4 w-4" />
+                      </div>
                     )}
-                    
-                    {/* Last update time */}
-                    <div className="text-xs text-f1-silver/70 mt-1">
-                      {formatTime(position.date).split(':').slice(0, 2).join(':')}
-                    </div>
+                  </div>
+                  
+                  {/* Last update time */}
+                  <div className="text-xs text-f1-silver/70 w-14 text-right">
+                    {formatTime(position.date).split(':').slice(0, 2).join(':')}
                   </div>
                 </div>
               );
