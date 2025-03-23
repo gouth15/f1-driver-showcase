@@ -23,5 +23,8 @@ export interface Driver {
   team_name: string;
   team_colour: string;
   headshot_url: string;
+  broadcast_name: string;
+  meeting_key?: number;
+  session_key?: number;
   // Other properties as needed
 }
