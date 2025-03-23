@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { RaceControlMessage, DriverPosition, Driver } from '@/types/f1';
+import { RaceControlMessage, DriverPosition, Driver, LapData } from '@/types/f1';
 import { Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Navbar from '@/components/Navbar';
@@ -10,6 +9,7 @@ const LiveTiming: React.FC = () => {
   const [driverPositions, setDriverPositions] = useState<DriverPosition[]>([]);
   const [previousPositions, setPreviousPositions] = useState<Record<number, number>>({});
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [lapData, setLapData] = useState<Record<number, LapData>>({});
   const [loading, setLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(true);
   const pollingIntervalRef = useRef<number | null>(null);
@@ -70,6 +70,33 @@ const LiveTiming: React.FC = () => {
     }
   }, []);
 
+  // Function to fetch lap data
+  const fetchLapData = useCallback(async () => {
+    try {
+      const response = await fetch('https://api.openf1.org/v1/laps?session_key=latest');
+      
+      if (!response.ok) {
+        return;
+      }
+      
+      const data: LapData[] = await response.json();
+      
+      // Create a map of the latest lap for each driver
+      const latestLapsByDriver: Record<number, LapData> = {};
+      
+      data.forEach(lap => {
+        if (!latestLapsByDriver[lap.driver_number] || 
+            lap.lap_number > latestLapsByDriver[lap.driver_number].lap_number) {
+          latestLapsByDriver[lap.driver_number] = lap;
+        }
+      });
+      
+      setLapData(latestLapsByDriver);
+    } catch (err) {
+      // Silently ignore errors
+    }
+  }, []);
+
   // Function to fetch driver positions
   const fetchDriverPositions = useCallback(async () => {
     try {
@@ -121,6 +148,7 @@ const LiveTiming: React.FC = () => {
     fetchRaceControlMessages();
     fetchDrivers();
     fetchDriverPositions();
+    fetchLapData();
     
     // Set up polling interval (every 2 seconds)
     pollingIntervalRef.current = window.setInterval(() => {
@@ -128,6 +156,7 @@ const LiveTiming: React.FC = () => {
         fetchRaceControlMessages();
         fetchDrivers();
         fetchDriverPositions();
+        fetchLapData();
       }
     }, 2000); // 2 seconds polling interval
     
@@ -137,7 +166,7 @@ const LiveTiming: React.FC = () => {
         window.clearInterval(pollingIntervalRef.current);
       }
     };
-  }, [fetchRaceControlMessages, fetchDrivers, fetchDriverPositions, isPolling]);
+  }, [fetchRaceControlMessages, fetchDrivers, fetchDriverPositions, fetchLapData, isPolling]);
 
   // Determine if a position has changed (improved, worsened, or unchanged)
   const getPositionChange = (driverNumber: number, currentPosition: number): 'improved' | 'worsened' | 'unchanged' => {
@@ -168,32 +197,36 @@ const LiveTiming: React.FC = () => {
       return '';
     }
   };
+
+  // Format lap time
+  const formatLapTime = (seconds: number | undefined) => {
+    if (!seconds) return '-';
+    
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds % 1) * 1000);
+    
+    return `${mins > 0 ? mins + ':' : ''}${secs.toString().padStart(mins > 0 ? 2 : 1, '0')}.${ms.toString().padStart(3, '0')}`;
+  };
   
   return (
     <div className="min-h-screen bg-f1-navy text-white">
       <Navbar />
       
       {/* Top spacing for fixed navbar */}
-      <div className="h-20"></div>
+      <div className="h-16"></div>
       
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">Live Timing</h1>
-          <p className="text-f1-white/70">
-            Real-time tracking of driver positions
-          </p>
-        </div>
-        
+      <div className="container mx-auto px-2 py-2">
         {/* Controls - Polling control */}
-        <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+        <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <button
               onClick={() => setIsPolling(!isPolling)}
-              className={`flex items-center px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              className={`flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 isPolling ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
               }`}
             >
-              <Clock className="mr-2 h-4 w-4" />
+              <Clock className="mr-1 h-3 w-3" />
               {isPolling ? 'Live: On' : 'Live: Off'}
             </button>
             {!isPolling && (
@@ -202,8 +235,9 @@ const LiveTiming: React.FC = () => {
                   fetchRaceControlMessages();
                   fetchDrivers();
                   fetchDriverPositions();
+                  fetchLapData();
                 }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-full text-sm font-medium transition-colors"
+                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-full text-xs font-medium transition-colors"
               >
                 Refresh Now
               </button>
@@ -221,16 +255,27 @@ const LiveTiming: React.FC = () => {
         {/* Driver position table - displayed as rows */}
         {!loading && driverPositions.length > 0 && (
           <div className="space-y-1">
+            {/* Table header */}
+            <div className="grid grid-cols-12 gap-1 text-xs text-f1-silver/80 mb-1 px-2">
+              <div className="col-span-1">Pos</div>
+              <div className="col-span-3">Driver</div>
+              <div className="col-span-2">Last Lap</div>
+              <div className="col-span-2">S1</div>
+              <div className="col-span-2">S2</div>
+              <div className="col-span-2">S3</div>
+            </div>
+            
             {driverPositions.map((position) => {
               const driver = getDriverByNumber(position.driver_number);
               const positionChange = getPositionChange(position.driver_number, position.position);
               const teamColor = driver?.team_colour ? `#${driver.team_colour}` : '#FFFFFF';
+              const driverLap = lapData[position.driver_number];
               
               return (
                 <div 
                   key={position.driver_number}
                   className={cn(
-                    "p-2 rounded-md border-l-4 flex items-center transition-all duration-300 h-12",
+                    "grid grid-cols-12 gap-1 p-2 rounded-md border-l-4 items-center transition-all duration-300 h-10",
                     "bg-f1-navy/60 border-f1-silver/20",
                     positionChange === 'improved' && "border-l-green-500 animate-slide-in-right",
                     positionChange === 'worsened' && "border-l-red-500 animate-slide-in-right",
@@ -240,50 +285,54 @@ const LiveTiming: React.FC = () => {
                   style={{ borderLeftColor: teamColor }}
                 >
                   {/* Position number */}
-                  <div className="min-w-[1.5rem] text-center font-bold mr-3">
-                    {position.position}
+                  <div className="col-span-1 font-bold flex items-center">
+                    <span 
+                      className="flex items-center justify-center text-sm"
+                    >
+                      {position.position}
+                      {positionChange === 'improved' && (
+                        <ChevronUp className="h-3 w-3 text-green-400 ml-1" />
+                      )}
+                      {positionChange === 'worsened' && (
+                        <ChevronDown className="h-3 w-3 text-red-400 ml-1" />
+                      )}
+                    </span>
                   </div>
                   
-                  {/* Driver number */}
-                  <div 
-                    className="min-w-[2.5rem] h-8 flex items-center justify-center font-bold rounded px-2 mr-2"
-                    style={{ backgroundColor: teamColor, color: '#FFFFFF' }}
-                  >
-                    {position.driver_number}
-                  </div>
-                  
-                  {/* Driver name and team */}
-                  <div className="flex-1 flex items-center">
+                  {/* Driver info */}
+                  <div className="col-span-3 flex items-center">
+                    <div 
+                      className="h-7 w-2 rounded-sm mr-2"
+                      style={{ backgroundColor: teamColor }}
+                    ></div>
                     <div className="flex flex-col">
-                      <span className="font-bold text-sm md:text-base">
+                      <span className="font-bold text-sm">
                         {driver ? driver.name_acronym : `#${position.driver_number}`}
                       </span>
-                      
-                      {driver && (
-                        <span className="text-xs text-f1-silver/80">
-                          {driver.team_name}
-                        </span>
-                      )}
+                      <span className="text-xs text-f1-silver/70 -mt-1">
+                        {driver?.team_name?.split(' ')[0] || ''}
+                      </span>
                     </div>
                   </div>
                   
-                  {/* Position change indicator */}
-                  <div className="flex items-center mr-2">
-                    {positionChange === 'improved' && (
-                      <div className="flex items-center text-green-400">
-                        <ChevronUp className="h-4 w-4" />
-                      </div>
-                    )}
-                    {positionChange === 'worsened' && (
-                      <div className="flex items-center text-red-400">
-                        <ChevronDown className="h-4 w-4" />
-                      </div>
-                    )}
+                  {/* Last Lap */}
+                  <div className="col-span-2 font-mono text-xs">
+                    {driverLap ? formatLapTime(driverLap.lap_duration) : '-'}
                   </div>
                   
-                  {/* Last update time */}
-                  <div className="text-xs text-f1-silver/70 w-14 text-right">
-                    {formatTime(position.date).split(':').slice(0, 2).join(':')}
+                  {/* Sector 1 */}
+                  <div className="col-span-2 font-mono text-xs">
+                    {driverLap ? formatLapTime(driverLap.duration_sector_1) : '-'}
+                  </div>
+                  
+                  {/* Sector 2 */}
+                  <div className="col-span-2 font-mono text-xs">
+                    {driverLap ? formatLapTime(driverLap.duration_sector_2) : '-'}
+                  </div>
+                  
+                  {/* Sector 3 */}
+                  <div className="col-span-2 font-mono text-xs">
+                    {driverLap ? formatLapTime(driverLap.duration_sector_3) : '-'}
                   </div>
                 </div>
               );
