@@ -40,21 +40,23 @@ const DriverPositionsList: React.FC<DriverPositionsListProps> = ({
         <div className="col-span-2">S3</div>
       </div>
       
-      {positions.map((position) => {
-        const driver = getDriverByNumber(position.driver_number);
-        const positionChange = getPositionChange(position.driver_number, position.position);
-        const driverLap = lapData[position.driver_number];
-        
-        return (
-          <DriverPositionRow
-            key={position.driver_number}
-            position={position}
-            driver={driver}
-            positionChange={positionChange}
-            driverLap={driverLap}
-          />
-        );
-      })}
+      <div className="space-y-1">
+        {positions.map((position) => {
+          const driver = getDriverByNumber(position.driver_number);
+          const positionChange = getPositionChange(position.driver_number, position.position);
+          const driverLap = lapData[position.driver_number];
+          
+          return (
+            <DriverPositionRow
+              key={position.driver_number}
+              position={position}
+              driver={driver}
+              positionChange={positionChange}
+              driverLap={driverLap}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 };
