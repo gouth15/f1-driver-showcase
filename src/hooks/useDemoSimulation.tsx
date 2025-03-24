@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RaceControlMessage, DriverPosition, Driver, LapData, DemoState } from '@/types/f1';
 import { useToast } from "@/hooks/use-toast";
@@ -85,14 +84,101 @@ export function useDemoSimulation() {
       // Get current lap data based on index
       const currentLapData = lapDataRef.current[dataIndexRef.current];
       
-      // Update positions randomly
+      // Update positions with more significant changes occasionally
       let newPositions = [...prevState.positions];
-      if (Math.random() > 0.5) {
-        const idx1 = Math.floor(Math.random() * newPositions.length);
-        let idx2 = Math.floor(Math.random() * newPositions.length);
-        while (idx2 === idx1) {
-          idx2 = Math.floor(Math.random() * newPositions.length);
+      
+      // Determine if we should make a significant position change (e.g., driver moving multiple places)
+      const makeSignificantChange = Math.random() > 0.7;
+      
+      if (makeSignificantChange) {
+        // Pick a random driver to move up or down multiple positions
+        const driverIndexToMove = Math.floor(Math.random() * newPositions.length);
+        const driverToMove = newPositions[driverIndexToMove];
+        const currentPosition = driverToMove.position;
+        
+        // Decide whether to move up or down
+        const moveUp = Math.random() > 0.5;
+        
+        // Determine how many positions to move (2-5 positions)
+        const positionsToMove = Math.floor(Math.random() * 4) + 2;
+        
+        // Calculate target position
+        let targetPosition;
+        if (moveUp) {
+          // Moving up means a lower position number
+          targetPosition = Math.max(1, currentPosition - positionsToMove);
+        } else {
+          // Moving down means a higher position number
+          targetPosition = Math.min(newPositions.length, currentPosition + positionsToMove);
         }
+        
+        // Skip if no actual change
+        if (targetPosition === currentPosition) {
+          // Just make a simple swap instead
+          const idx1 = Math.floor(Math.random() * newPositions.length);
+          let idx2 = Math.floor(Math.random() * newPositions.length);
+          while (idx2 === idx1) {
+            idx2 = Math.floor(Math.random() * newPositions.length);
+          }
+          
+          const pos1 = newPositions[idx1].position;
+          const pos2 = newPositions[idx2].position;
+          
+          newPositions[idx1] = {
+            ...newPositions[idx1],
+            position: pos2,
+            date: new Date().toISOString()
+          };
+          
+          newPositions[idx2] = {
+            ...newPositions[idx2],
+            position: pos1,
+            date: new Date().toISOString()
+          };
+        } else {
+          // Reorder all affected positions
+          newPositions = newPositions.map(pos => {
+            // The driver that is moving
+            if (pos.driver_number === driverToMove.driver_number) {
+              return {
+                ...pos,
+                position: targetPosition,
+                date: new Date().toISOString()
+              };
+            }
+            
+            // Other drivers affected by the move
+            if (moveUp) {
+              // When a driver moves up, others in between move down
+              if (pos.position >= targetPosition && pos.position < currentPosition) {
+                return {
+                  ...pos,
+                  position: pos.position + 1,
+                  date: new Date().toISOString()
+                };
+              }
+            } else {
+              // When a driver moves down, others in between move up
+              if (pos.position <= targetPosition && pos.position > currentPosition) {
+                return {
+                  ...pos,
+                  position: pos.position - 1,
+                  date: new Date().toISOString()
+                };
+              }
+            }
+            
+            // Drivers not affected by the move
+            return pos;
+          });
+        }
+        
+        // Sort the positions array by position
+        newPositions.sort((a, b) => a.position - b.position);
+      } else {
+        // Simple position swap between two adjacent drivers
+        const idx1 = Math.floor(Math.random() * (newPositions.length - 1));
+        const idx2 = idx1 + 1;
         
         const pos1 = newPositions[idx1].position;
         const pos2 = newPositions[idx2].position;
@@ -109,6 +195,7 @@ export function useDemoSimulation() {
           date: new Date().toISOString()
         };
         
+        // Sort by position
         newPositions.sort((a, b) => a.position - b.position);
       }
       

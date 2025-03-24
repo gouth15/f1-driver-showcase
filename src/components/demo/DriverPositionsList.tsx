@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Driver, DriverPosition, LapData } from '@/types/f1';
 import DriverPositionRow from './DriverPositionRow';
 
@@ -16,6 +16,27 @@ const DriverPositionsList: React.FC<DriverPositionsListProps> = ({
   lapData,
   previousPositions
 }) => {
+  const [animatingItems, setAnimatingItems] = useState<number[]>([]);
+
+  useEffect(() => {
+    // Collect all drivers with position changes
+    const changedDrivers: number[] = [];
+    positions.forEach(pos => {
+      const prevPos = previousPositions[pos.driver_number];
+      if (prevPos !== undefined && prevPos !== pos.position) {
+        changedDrivers.push(pos.driver_number);
+      }
+    });
+    
+    if (changedDrivers.length > 0) {
+      setAnimatingItems(changedDrivers);
+      const timer = setTimeout(() => {
+        setAnimatingItems([]);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [positions, previousPositions]);
+
   const getPositionChange = (driverNumber: number, currentPosition: number): 'improved' | 'worsened' | 'unchanged' => {
     const prevPosition = previousPositions[driverNumber];
     
@@ -40,7 +61,7 @@ const DriverPositionsList: React.FC<DriverPositionsListProps> = ({
         <div className="col-span-2">S3</div>
       </div>
       
-      <div className="space-y-1">
+      <div className="space-y-1 relative">
         {positions.map((position) => {
           const driver = getDriverByNumber(position.driver_number);
           const positionChange = getPositionChange(position.driver_number, position.position);

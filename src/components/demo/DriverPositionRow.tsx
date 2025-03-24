@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Driver, LapData, DriverPosition } from '@/types/f1';
 import { ChevronUp, ChevronDown } from 'lucide-react';
@@ -37,20 +38,13 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
     return `${mins > 0 ? mins + ':' : ''}${secs.toString().padStart(mins > 0 ? 2 : 1, '0')}.${ms.toString().padStart(3, '0')}`;
   };
 
-  const getTransform = () => {
-    if (!animatePosition) return 'none';
-    if (positionChange === 'improved') return 'translateY(0)';
-    if (positionChange === 'worsened') return 'translateY(0)';
-    return 'none';
-  };
-
   return (
     <div 
       className={cn(
-        "grid grid-cols-12 gap-1 p-2 rounded-md border-l-4 items-center",
-        "bg-f1-navy/60 border-f1-silver/20 h-10",
-        animatePosition && positionChange === 'improved' && "animate-slide-up transition-transform duration-1000",
-        animatePosition && positionChange === 'worsened' && "animate-slide-down transition-transform duration-1000"
+        "grid grid-cols-12 gap-1 p-2 rounded-md border-l-4 items-center transition-all",
+        "bg-f1-navy/60 border-f1-silver/20 h-10 relative",
+        animatePosition && positionChange === 'improved' && "animate-position-improved",
+        animatePosition && positionChange === 'worsened' && "animate-position-worsened"
       )}
       style={{ 
         borderLeftColor: teamColor,

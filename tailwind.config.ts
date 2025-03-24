@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -109,10 +110,13 @@ export default {
           '0%': { transform: 'translateY(-10px)', opacity: '0.8' },
           '100%': { transform: 'translateY(0)', opacity: '1' }
         },
-        'position-change': {
-          '0%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(10px)' },
-          '100%': { transform: 'translateY(0)' }
+        'position-improved': {
+          '0%': { transform: 'translateY(100%)', zIndex: '10' },
+          '100%': { transform: 'translateY(0)', zIndex: '10' }
+        },
+        'position-worsened': {
+          '0%': { transform: 'translateY(-100%)', zIndex: '10' },
+          '100%': { transform: 'translateY(0)', zIndex: '10' }
         },
         'scale-in': {
           '0%': { transform: 'scale(0.95)', opacity: '0' },
@@ -130,7 +134,8 @@ export default {
         'fade-out': 'fade-out 0.4s ease-out',
         'slide-up': 'slide-up 0.5s ease-out',
         'slide-down': 'slide-down 0.5s ease-out',
-        'position-change': 'position-change 1s ease-in-out',
+        'position-improved': 'position-improved 0.8s ease-in-out',
+        'position-worsened': 'position-worsened 0.8s ease-in-out',
         'scale-in': 'scale-in 0.4s ease-out',
         'blur-in': 'blur-in 0.4s ease-out'
       }
