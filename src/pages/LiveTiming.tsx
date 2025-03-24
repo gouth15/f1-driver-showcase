@@ -16,7 +16,6 @@ const LiveTiming: React.FC = () => {
   const lastMessageTimeRef = useRef<string | null>(null);
   const { toast } = useToast();
   
-  // Function to fetch race control messages
   const fetchRaceControlMessages = useCallback(async () => {
     try {
       const response = await fetch('https://api.openf1.org/v1/race_control?session_key=latest');
@@ -27,34 +26,27 @@ const LiveTiming: React.FC = () => {
       
       const data = await response.json();
       
-      // Process race control messages
       const raceControlMessages: RaceControlMessage[] = data.filter((item: any) => item.message);
       
-      // Sort race control messages by date (newest first)
       if (raceControlMessages.length > 0) {
         const sortedMessages = [...raceControlMessages].sort((a, b) => 
           new Date(b.date).getTime() - new Date(a.date).getTime()
         );
-
-        // Check if we have a new message
+        
         if (sortedMessages.length > 0 && lastMessageTimeRef.current !== sortedMessages[0].date) {
-          // Show toast instead of banner
           toast({
             title: "Race Control",
             description: sortedMessages[0].message,
             duration: 5000,
           });
           
-          // Update lastMessageTime ref
           lastMessageTimeRef.current = sortedMessages[0].date;
         }
       }
     } catch (err) {
-      // Silently ignore errors
     }
   }, [toast]);
 
-  // Function to fetch driver information
   const fetchDrivers = useCallback(async () => {
     try {
       const response = await fetch('https://api.openf1.org/v1/drivers?session_key=latest');
@@ -66,11 +58,9 @@ const LiveTiming: React.FC = () => {
       const data: Driver[] = await response.json();
       setDrivers(data);
     } catch (err) {
-      // Silently ignore errors
     }
   }, []);
 
-  // Function to fetch lap data
   const fetchLapData = useCallback(async () => {
     try {
       const response = await fetch('https://api.openf1.org/v1/laps?session_key=latest');
@@ -81,7 +71,6 @@ const LiveTiming: React.FC = () => {
       
       const data: LapData[] = await response.json();
       
-      // Create a map of the latest lap for each driver
       const latestLapsByDriver: Record<number, LapData> = {};
       
       data.forEach(lap => {
@@ -93,11 +82,9 @@ const LiveTiming: React.FC = () => {
       
       setLapData(latestLapsByDriver);
     } catch (err) {
-      // Silently ignore errors
     }
   }, []);
 
-  // Function to fetch driver positions
   const fetchDriverPositions = useCallback(async () => {
     try {
       const response = await fetch('https://api.openf1.org/v1/position?session_key=latest');
@@ -108,10 +95,8 @@ const LiveTiming: React.FC = () => {
       
       const data: DriverPosition[] = await response.json();
       
-      // Before updating positions, store the current ones as previous
       const currentPositionMap: Record<number, number> = {};
       
-      // Create a map of the latest position for each driver
       const latestPositionsByDriver: Record<number, DriverPosition> = {};
       
       data.forEach(pos => {
@@ -121,36 +106,28 @@ const LiveTiming: React.FC = () => {
         }
       });
       
-      // Convert the map back to an array and sort by position
       const sortedPositions = Object.values(latestPositionsByDriver).sort((a, b) => a.position - b.position);
       
-      // Create the previous positions map for tracking changes
       driverPositions.forEach(dp => {
         currentPositionMap[dp.driver_number] = dp.position;
       });
       
-      // Update previous positions
       setPreviousPositions(currentPositionMap);
       
-      // Set the new driver positions
       setDriverPositions(sortedPositions);
       setLoading(false);
       
     } catch (err) {
-      // Silently ignore errors
       setLoading(false);
     }
   }, [driverPositions]);
   
-  // Start polling on component mount
   useEffect(() => {
-    // Initial fetch
     fetchRaceControlMessages();
     fetchDrivers();
     fetchDriverPositions();
     fetchLapData();
     
-    // Set up polling interval (every 2 seconds)
     pollingIntervalRef.current = window.setInterval(() => {
       if (isPolling) {
         fetchRaceControlMessages();
@@ -158,9 +135,8 @@ const LiveTiming: React.FC = () => {
         fetchDriverPositions();
         fetchLapData();
       }
-    }, 2000); // 2 seconds polling interval
+    }, 2000);
     
-    // Clean up on unmount
     return () => {
       if (pollingIntervalRef.current !== null) {
         window.clearInterval(pollingIntervalRef.current);
@@ -168,7 +144,6 @@ const LiveTiming: React.FC = () => {
     };
   }, [fetchRaceControlMessages, fetchDrivers, fetchDriverPositions, fetchLapData, isPolling]);
 
-  // Determine if a position has changed (improved, worsened, or unchanged)
   const getPositionChange = (driverNumber: number, currentPosition: number): 'improved' | 'worsened' | 'unchanged' => {
     const prevPosition = previousPositions[driverNumber];
     
@@ -178,12 +153,10 @@ const LiveTiming: React.FC = () => {
     return 'unchanged';
   };
 
-  // Get driver by number
   const getDriverByNumber = (driverNumber: number): Driver | undefined => {
     return drivers.find(driver => driver.driver_number === driverNumber);
   };
   
-  // Format the time
   const formatTime = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -198,7 +171,6 @@ const LiveTiming: React.FC = () => {
     }
   };
 
-  // Format lap time
   const formatLapTime = (seconds: number | undefined) => {
     if (!seconds) return '-';
     
@@ -213,11 +185,9 @@ const LiveTiming: React.FC = () => {
     <div className="min-h-screen bg-f1-navy text-white">
       <Navbar />
       
-      {/* Top spacing for fixed navbar */}
       <div className="h-16"></div>
       
       <div className="container mx-auto px-2 py-2">
-        {/* Controls - Polling control */}
         <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <button
@@ -245,17 +215,14 @@ const LiveTiming: React.FC = () => {
           </div>
         </div>
         
-        {/* Loading state */}
         {loading && (
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-f1-red"></div>
           </div>
         )}
         
-        {/* Driver position table - displayed as rows */}
         {!loading && driverPositions.length > 0 && (
           <div className="space-y-1">
-            {/* Table header */}
             <div className="grid grid-cols-12 gap-1 text-xs text-f1-silver/80 mb-1 px-2">
               <div className="col-span-1">Pos</div>
               <div className="col-span-3">Driver</div>
@@ -278,13 +245,10 @@ const LiveTiming: React.FC = () => {
                     "grid grid-cols-12 gap-1 p-2 rounded-md border-l-4 items-center transition-all duration-300 h-10",
                     "bg-f1-navy/60 border-f1-silver/20",
                     positionChange === 'improved' && "border-l-green-500 animate-slide-in-right",
-                    positionChange === 'worsened' && "border-l-red-500 animate-slide-in-right",
-                    positionChange === 'improved' && "transform -translate-y-1",
-                    positionChange === 'worsened' && "transform translate-y-1"
+                    positionChange === 'worsened' && "border-l-red-500 animate-slide-in-right"
                   )}
                   style={{ borderLeftColor: teamColor }}
                 >
-                  {/* Position number */}
                   <div className="col-span-1 font-bold flex items-center">
                     <span 
                       className="flex items-center justify-center text-sm"
@@ -299,7 +263,6 @@ const LiveTiming: React.FC = () => {
                     </span>
                   </div>
                   
-                  {/* Driver info */}
                   <div className="col-span-3 flex items-center">
                     <div 
                       className="h-7 w-2 rounded-sm mr-2"
@@ -315,22 +278,18 @@ const LiveTiming: React.FC = () => {
                     </div>
                   </div>
                   
-                  {/* Last Lap */}
                   <div className="col-span-2 font-mono text-xs">
                     {driverLap ? formatLapTime(driverLap.lap_duration) : '-'}
                   </div>
                   
-                  {/* Sector 1 */}
                   <div className="col-span-2 font-mono text-xs">
                     {driverLap ? formatLapTime(driverLap.duration_sector_1) : '-'}
                   </div>
                   
-                  {/* Sector 2 */}
                   <div className="col-span-2 font-mono text-xs">
                     {driverLap ? formatLapTime(driverLap.duration_sector_2) : '-'}
                   </div>
                   
-                  {/* Sector 3 */}
                   <div className="col-span-2 font-mono text-xs">
                     {driverLap ? formatLapTime(driverLap.duration_sector_3) : '-'}
                   </div>
@@ -340,7 +299,6 @@ const LiveTiming: React.FC = () => {
           </div>
         )}
         
-        {/* Empty state */}
         {!loading && driverPositions.length === 0 && (
           <div className="text-center py-12 bg-f1-navy/30 rounded-lg">
             <p className="text-f1-white/70">

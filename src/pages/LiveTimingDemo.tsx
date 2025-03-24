@@ -18,7 +18,6 @@ const LiveTimingDemo: React.FC = () => {
   const apiIndexRef = useRef<number>(0);
   const { toast } = useToast();
   
-  // Fetch real data from API once
   const fetchApiData = async () => {
     setIsLoading(true);
     try {
@@ -33,7 +32,6 @@ const LiveTimingDemo: React.FC = () => {
         description: `Loaded ${data.length} lap data entries for simulation`,
         duration: 3000,
       });
-      // Reset index
       apiIndexRef.current = 0;
       setIsLoading(false);
     } catch (error) {
@@ -48,38 +46,29 @@ const LiveTimingDemo: React.FC = () => {
     }
   };
   
-  // Update simulation using real API data
   const updateSimulation = useCallback(() => {
-    // If we have API data, use it for simulation
     if (apiDataRef.current.length > 0) {
       setDemoState(prevState => {
-        // First save current positions for animation
         const currentPositionMap: Record<number, number> = {};
         prevState.positions.forEach(dp => {
           currentPositionMap[dp.driver_number] = dp.position;
         });
         
-        // Then update previous positions state
         setPreviousPositions(currentPositionMap);
         
-        // Get current API data entry
         const currentIndex = apiIndexRef.current % apiDataRef.current.length;
         const currentLapData = apiDataRef.current[currentIndex];
         
-        // Move to next index for next update
         apiIndexRef.current = (apiIndexRef.current + 1) % apiDataRef.current.length;
         
-        // Create a new positions array with random position changes
         let newPositions = [...prevState.positions];
         if (Math.random() > 0.5) {
-          // Pick two random positions to swap
           const idx1 = Math.floor(Math.random() * newPositions.length);
           let idx2 = Math.floor(Math.random() * newPositions.length);
           while (idx2 === idx1) {
             idx2 = Math.floor(Math.random() * newPositions.length);
           }
           
-          // Swap them
           const pos1 = newPositions[idx1].position;
           const pos2 = newPositions[idx2].position;
           
@@ -95,11 +84,9 @@ const LiveTimingDemo: React.FC = () => {
             date: new Date().toISOString()
           };
           
-          // Sort by position
           newPositions.sort((a, b) => a.position - b.position);
         }
         
-        // Update lap data with real API data for a random driver
         const randomDriverIndex = Math.floor(Math.random() * prevState.drivers.length);
         const randomDriverNumber = prevState.drivers[randomDriverIndex].driver_number;
         
@@ -109,7 +96,6 @@ const LiveTimingDemo: React.FC = () => {
           driver_number: randomDriverNumber
         };
         
-        // Maybe add a new race control message
         let newMessages = [...prevState.messages];
         if (Math.random() > 0.8) {
           const messageOptions = [
@@ -136,7 +122,6 @@ const LiveTimingDemo: React.FC = () => {
             ...newMessages
           ];
           
-          // Check if we have a new message to show
           if (lastMessageTimeRef.current !== now) {
             toast({
               title: "Race Control",
@@ -156,9 +141,7 @@ const LiveTimingDemo: React.FC = () => {
         };
       });
     } else {
-      // Fallback to random updates if no API data
       setDemoState(prevState => {
-        // Save current positions
         const currentPositionMap: Record<number, number> = {};
         prevState.positions.forEach(dp => {
           currentPositionMap[dp.driver_number] = dp.position;
@@ -166,17 +149,14 @@ const LiveTimingDemo: React.FC = () => {
         
         setPreviousPositions(currentPositionMap);
         
-        // Update with random changes
         let newPositions = [...prevState.positions];
         if (Math.random() > 0.5) {
-          // Pick two random positions to swap
           const idx1 = Math.floor(Math.random() * newPositions.length);
           let idx2 = Math.floor(Math.random() * newPositions.length);
           while (idx2 === idx1) {
             idx2 = Math.floor(Math.random() * newPositions.length);
           }
           
-          // Swap them
           const pos1 = newPositions[idx1].position;
           const pos2 = newPositions[idx2].position;
           
@@ -192,11 +172,9 @@ const LiveTimingDemo: React.FC = () => {
             date: new Date().toISOString()
           };
           
-          // Sort by position
           newPositions.sort((a, b) => a.position - b.position);
         }
         
-        // Maybe add a new race control message
         let newMessages = [...prevState.messages];
         if (Math.random() > 0.8) {
           const messageOptions = [
@@ -223,7 +201,6 @@ const LiveTimingDemo: React.FC = () => {
             ...newMessages
           ];
           
-          // Show toast notification for new message
           if (lastMessageTimeRef.current !== now) {
             toast({
               title: "Race Control",
@@ -245,23 +222,19 @@ const LiveTimingDemo: React.FC = () => {
     }
   }, [toast]);
   
-  // Fetch API data on component mount
   useEffect(() => {
     fetchApiData();
   }, []);
   
-  // Start/stop simulation
   useEffect(() => {
     if (isRunning) {
-      // Clear any existing interval
       if (intervalRef.current !== null) {
         window.clearInterval(intervalRef.current);
       }
       
-      // Set new interval based on speed
       intervalRef.current = window.setInterval(() => {
         updateSimulation();
-      }, 2000 / speed); // Base interval is 2 seconds
+      }, 2000 / speed);
     } else if (intervalRef.current !== null) {
       window.clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -274,7 +247,6 @@ const LiveTimingDemo: React.FC = () => {
     };
   }, [isRunning, speed, updateSimulation]);
   
-  // Reset demo
   const resetDemo = () => {
     if (intervalRef.current !== null) {
       window.clearInterval(intervalRef.current);
@@ -286,7 +258,6 @@ const LiveTimingDemo: React.FC = () => {
     lastMessageTimeRef.current = null;
     apiIndexRef.current = 0;
     
-    // If it was running, restart it
     if (isRunning) {
       intervalRef.current = window.setInterval(() => {
         updateSimulation();
@@ -294,13 +265,11 @@ const LiveTimingDemo: React.FC = () => {
     }
   };
   
-  // Reload API data
   const reloadApiData = () => {
     fetchApiData();
     resetDemo();
   };
   
-  // Determine if a position has changed (improved, worsened, or unchanged)
   const getPositionChange = (driverNumber: number, currentPosition: number): 'improved' | 'worsened' | 'unchanged' => {
     const prevPosition = previousPositions[driverNumber];
     
@@ -310,12 +279,10 @@ const LiveTimingDemo: React.FC = () => {
     return 'unchanged';
   };
 
-  // Get driver by number
   const getDriverByNumber = (driverNumber: number): Driver | undefined => {
     return demoState.drivers.find(driver => driver.driver_number === driverNumber);
   };
   
-  // Format lap time
   const formatLapTime = (seconds: number | undefined) => {
     if (!seconds) return '-';
     
@@ -326,17 +293,14 @@ const LiveTimingDemo: React.FC = () => {
     return `${mins > 0 ? mins + ':' : ''}${secs.toString().padStart(mins > 0 ? 2 : 1, '0')}.${ms.toString().padStart(3, '0')}`;
   };
   
-  // Calculate position change animation offset
   const getPositionOffset = (driverNumber: number, currentPosition: number): string => {
     const prevPosition = previousPositions[driverNumber];
     
     if (prevPosition === undefined) return '0px';
     if (currentPosition < prevPosition) {
-      // Moving up (improved)
       return `${(prevPosition - currentPosition) * 40}px`;
     }
     if (currentPosition > prevPosition) {
-      // Moving down (worsened)
       return `-${(currentPosition - prevPosition) * 40}px`;
     }
     return '0px';
@@ -346,11 +310,9 @@ const LiveTimingDemo: React.FC = () => {
     <div className="min-h-screen bg-f1-navy text-white">
       <Navbar />
       
-      {/* Top spacing for fixed navbar */}
       <div className="h-16"></div>
       
       <div className="container mx-auto px-2 py-2">
-        {/* Controls - Demo controls */}
         <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <button
@@ -407,10 +369,8 @@ const LiveTimingDemo: React.FC = () => {
           </div>
         </div>
         
-        {/* Driver position table - displayed as rows */}
         {demoState.positions.length > 0 && (
           <div className="space-y-1">
-            {/* Table header */}
             <div className="grid grid-cols-12 gap-1 text-xs text-f1-silver/80 mb-1 px-2">
               <div className="col-span-1">Pos</div>
               <div className="col-span-3">Driver</div>
@@ -439,7 +399,6 @@ const LiveTimingDemo: React.FC = () => {
                     transform: positionChange !== 'unchanged' ? `translateY(${animationOffset})` : 'none',
                   }}
                 >
-                  {/* Position number */}
                   <div className="col-span-1 font-bold flex items-center">
                     <span 
                       className="flex items-center justify-center text-sm"
@@ -454,7 +413,6 @@ const LiveTimingDemo: React.FC = () => {
                     </span>
                   </div>
                   
-                  {/* Driver info */}
                   <div className="col-span-3 flex items-center">
                     <div 
                       className="h-7 w-2 rounded-sm mr-2"
@@ -470,22 +428,18 @@ const LiveTimingDemo: React.FC = () => {
                     </div>
                   </div>
                   
-                  {/* Last Lap */}
                   <div className="col-span-2 font-mono text-xs">
                     {driverLap ? formatLapTime(driverLap.lap_duration) : '-'}
                   </div>
                   
-                  {/* Sector 1 */}
                   <div className="col-span-2 font-mono text-xs">
                     {driverLap ? formatLapTime(driverLap.duration_sector_1) : '-'}
                   </div>
                   
-                  {/* Sector 2 */}
                   <div className="col-span-2 font-mono text-xs">
                     {driverLap ? formatLapTime(driverLap.duration_sector_2) : '-'}
                   </div>
                   
-                  {/* Sector 3 */}
                   <div className="col-span-2 font-mono text-xs">
                     {driverLap ? formatLapTime(driverLap.duration_sector_3) : '-'}
                   </div>
