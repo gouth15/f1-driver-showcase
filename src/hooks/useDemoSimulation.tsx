@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RaceControlMessage, DriverPosition, Driver, LapData, DemoState } from '@/types/f1';
 import { useToast } from "@/hooks/use-toast";
@@ -23,12 +24,11 @@ export function useDemoSimulation() {
   const lapDataRef = useRef<LapData[]>([]);
   const messagesDataRef = useRef<RaceControlMessage[]>([]);
   
-  // Current index for iterating through position data
-  const positionIndexRef = useRef<number>(0);
-  // Track the last time we processed a message
-  const lapIndexRef = useRef<number>(0);
-  // Track the message data index
-  const messageIndexRef = useRef<number>(0);
+  // Single, unified data index for sequential processing
+  const dataIndexRef = useRef<number>(0);
+  
+  // Array to hold all data items sorted by date
+  const sortedDataRef = useRef<Array<{type: 'position' | 'lap' | 'message', data: any}>>([]);
   
   const { toast } = useToast();
 
@@ -52,10 +52,33 @@ export function useDemoSimulation() {
     });
     setPreviousPositions(positionMap);
     
-    // Reset all indexes
-    positionIndexRef.current = 0;
-    lapIndexRef.current = 0;
-    messageIndexRef.current = 0;
+    // Reset data index
+    dataIndexRef.current = 0;
+    
+    // Sort and combine all data into a unified timeline
+    const allDataItems: Array<{type: 'position' | 'lap' | 'message', data: any}> = [
+      ...positionsDataRef.current.map(item => ({
+        type: 'position' as const,
+        data: item,
+        date: new Date(item.date).getTime()
+      })),
+      ...lapDataRef.current.map(item => ({
+        type: 'lap' as const,
+        data: item,
+        date: new Date(item.date_start).getTime()
+      })),
+      ...messagesDataRef.current.map(item => ({
+        type: 'message' as const,
+        data: item,
+        date: new Date(item.date).getTime()
+      }))
+    ];
+    
+    // Sort by date
+    allDataItems.sort((a, b) => a.date - b.date);
+    
+    sortedDataRef.current = allDataItems;
+    console.log(`Initialized ${allDataItems.length} data items in timeline`);
   }, []);
 
   const setApiData = useCallback((data: {
@@ -65,37 +88,28 @@ export function useDemoSimulation() {
     messages: RaceControlMessage[]
   }) => {
     driversDataRef.current = data.drivers;
+    positionsDataRef.current = data.positions;
+    lapDataRef.current = data.laps;
+    messagesDataRef.current = data.messages;
     
-    // Sort positions by date for proper time sequencing
-    positionsDataRef.current = data.positions.sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-    
-    // Sort laps by date for proper time sequencing
-    lapDataRef.current = data.laps.sort((a, b) => 
-      new Date(a.date_start).getTime() - new Date(b.date_start).getTime()
-    );
-    
-    // Sort messages by date
-    messagesDataRef.current = data.messages.sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-    
-    // Reset all indexes
-    positionIndexRef.current = 0;
-    lapIndexRef.current = 0;
-    messageIndexRef.current = 0;
+    // Reset data index
+    dataIndexRef.current = 0;
   }, []);
 
   const updateSimulation = useCallback(() => {
-    // Skip update if no data has been loaded
+    // Skip update if no data has been loaded or we've processed all data
     if (
       driversDataRef.current.length === 0 || 
-      positionsDataRef.current.length === 0
-    ) return;
+      sortedDataRef.current.length === 0 ||
+      dataIndexRef.current >= sortedDataRef.current.length
+    ) {
+      // Loop back to beginning if we've reached the end
+      dataIndexRef.current = 0;
+      return;
+    }
     
+    // Store current positions for animation
     setDemoState(prevState => {
-      // Store current positions for animation
       const currentPositionMap: Record<number, number> = {};
       prevState.positions.forEach(dp => {
         currentPositionMap[dp.driver_number] = dp.position;
@@ -103,128 +117,74 @@ export function useDemoSimulation() {
       
       setPreviousPositions(currentPositionMap);
       
-      // Get next batch of position data (move this index forward)
-      const positionBatchSize = Math.min(3, positionsDataRef.current.length - positionIndexRef.current);
-      const nextPositionIndex = Math.min(
-        positionIndexRef.current + positionBatchSize, 
-        positionsDataRef.current.length - 1
-      );
-      
-      // Get positions for this time slice
-      const currentPositionData = positionsDataRef.current.slice(
-        positionIndexRef.current, 
-        nextPositionIndex
-      );
-      
-      // Update position index for next time
-      positionIndexRef.current = nextPositionIndex;
-      
-      // If we've reached the end, loop back to the beginning
-      if (positionIndexRef.current >= positionsDataRef.current.length - 1) {
-        positionIndexRef.current = 0;
-      }
-      
-      // Process the new position data
+      // Determine how many items to process based on speed
+      const itemsToProcess = Math.min(speed, 3);
       let newPositions = [...prevState.positions];
-      
-      // Update positions based on real data if available
-      if (currentPositionData.length > 0) {
-        const latestByDriver = new Map<number, DriverPosition>();
-        
-        // Get latest position update for each driver in this batch
-        currentPositionData.forEach(pos => {
-          const existing = latestByDriver.get(pos.driver_number);
-          if (!existing || new Date(pos.date) > new Date(existing.date)) {
-            latestByDriver.set(pos.driver_number, pos);
-          }
-        });
-        
-        // Apply the latest position updates
-        latestByDriver.forEach((newPos) => {
-          const driverIdx = newPositions.findIndex(p => p.driver_number === newPos.driver_number);
-          
-          if (driverIdx !== -1) {
-            // Update this driver's position
-            newPositions[driverIdx] = {
-              ...newPositions[driverIdx],
-              position: newPos.position,
-              date: new Date().toISOString() // Use current time for smooth animation
-            };
-          }
-        });
-        
-        // Resort by position
-        newPositions.sort((a, b) => a.position - b.position);
-      }
-      
-      // Get lap data for this time slice
-      const lapBatchSize = Math.min(2, lapDataRef.current.length - lapIndexRef.current);
-      const nextLapIndex = Math.min(
-        lapIndexRef.current + lapBatchSize, 
-        lapDataRef.current.length - 1
-      );
-      
-      const currentLapData = lapDataRef.current.slice(
-        lapIndexRef.current, 
-        nextLapIndex
-      );
-      
-      // Update lap index for next time
-      lapIndexRef.current = nextLapIndex;
-      
-      // If we've reached the end, loop back to the beginning
-      if (lapIndexRef.current >= lapDataRef.current.length - 1) {
-        lapIndexRef.current = 0;
-      }
-      
-      // Process the new lap data
-      const newLapData = { ...prevState.lapData };
-      
-      currentLapData.forEach(lap => {
-        newLapData[lap.driver_number] = lap;
-      });
-      
-      // Get message data for this time slice
+      let newLapData = { ...prevState.lapData };
       let newMessages = [...prevState.messages];
-      if (messagesDataRef.current.length > 0 && Math.random() > 0.7) {
-        const nextMessageIndex = Math.min(
-          messageIndexRef.current + 1, 
-          messagesDataRef.current.length - 1
-        );
-        
-        const newMessage = messagesDataRef.current[messageIndexRef.current];
-        
-        // Update message index for next time
-        messageIndexRef.current = nextMessageIndex;
-        
-        // If we've reached the end, loop back to the beginning
-        if (messageIndexRef.current >= messagesDataRef.current.length - 1) {
-          messageIndexRef.current = 0;
+      
+      // Process the next batch of items
+      for (let i = 0; i < itemsToProcess; i++) {
+        if (dataIndexRef.current >= sortedDataRef.current.length) {
+          dataIndexRef.current = 0;
+          break;
         }
         
-        if (newMessage) {
-          const now = new Date().toISOString();
-          
-          newMessages = [
-            {
-              date: now,
-              message: newMessage.message,
-              category: newMessage.category || "Race Control",
-              flag: newMessage.flag || "none"
-            },
-            ...newMessages
-          ];
-          
-          if (lastMessageTimeRef.current !== now) {
-            toast({
-              title: "Race Control",
-              description: newMessage.message,
-              duration: 5000,
-            });
+        const currentItem = sortedDataRef.current[dataIndexRef.current];
+        
+        switch (currentItem.type) {
+          case 'position': {
+            const posData = currentItem.data as DriverPosition;
+            const driverIdx = newPositions.findIndex(p => p.driver_number === posData.driver_number);
             
-            lastMessageTimeRef.current = now;
+            if (driverIdx !== -1) {
+              // Update this driver's position
+              newPositions[driverIdx] = {
+                ...newPositions[driverIdx],
+                position: posData.position,
+                date: new Date().toISOString() // Use current time for smooth animation
+              };
+            }
+            
+            // Resort by position
+            newPositions.sort((a, b) => a.position - b.position);
+            break;
+          }
+          
+          case 'lap': {
+            const lapData = currentItem.data as LapData;
+            newLapData[lapData.driver_number] = lapData;
+            break;
+          }
+          
+          case 'message': {
+            const message = currentItem.data as RaceControlMessage;
+            const now = new Date().toISOString();
+            
+            newMessages = [
+              {
+                date: now,
+                message: message.message,
+                category: message.category || "Race Control",
+                flag: message.flag || "none"
+              },
+              ...newMessages
+            ];
+            
+            if (lastMessageTimeRef.current !== now) {
+              toast({
+                title: "Race Control",
+                description: message.message,
+                duration: 5000,
+              });
+              
+              lastMessageTimeRef.current = now;
+            }
+            break;
           }
         }
+        
+        dataIndexRef.current++;
       }
       
       return {
@@ -244,10 +204,8 @@ export function useDemoSimulation() {
     
     setPreviousPositions({});
     
-    // Reset all indexes
-    positionIndexRef.current = 0;
-    lapIndexRef.current = 0;
-    messageIndexRef.current = 0;
+    // Reset data index
+    dataIndexRef.current = 0;
     
     initializeState();
     lastMessageTimeRef.current = null;
@@ -296,4 +254,3 @@ export function useDemoSimulation() {
     lapDataCount: lapDataRef.current.length
   };
 }
-

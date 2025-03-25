@@ -42,9 +42,11 @@ const LiveTimingDemo: React.FC = () => {
       // Initialize the demo state with the first data points
       initializeState();
       
+      const totalDataPoints = data.positions.length + data.laps.length + data.messages.length;
+      
       toast({
         title: "Data Loaded",
-        description: `Loaded ${data.drivers.length} drivers, ${data.positions.length} position updates, ${data.laps.length} lap entries, and ${data.messages.length} messages for simulation`,
+        description: `Loaded ${data.drivers.length} drivers and ${totalDataPoints} total data points for simulation`,
         duration: 3000,
       });
       
@@ -88,8 +90,8 @@ const LiveTimingDemo: React.FC = () => {
         />
         
         <div className="text-xs font-mono bg-f1-navy/60 px-2 py-1 rounded mb-2 flex justify-between">
-          <span>{lapDataCount > 0 ? `Using ${lapDataCount} real data points` : 'No data loaded'}</span>
-          <span className="text-f1-silver/70">Data-Driven Demo</span>
+          <span>{lapDataCount > 0 ? `Using real F1 data (session_key=9994)` : 'No data loaded'}</span>
+          <span className="text-f1-silver/70">Sequential Data Demo</span>
         </div>
         
         {demoState.positions.length > 0 && (
