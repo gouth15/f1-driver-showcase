@@ -17,6 +17,20 @@ const DriverPositionsList: React.FC<DriverPositionsListProps> = ({
   previousPositions
 }) => {
   const [animatingItems, setAnimatingItems] = useState<number[]>([]);
+  const [bestLapTimes, setBestLapTimes] = useState<Record<number, {
+    overall: number | null;
+    personal: number | null;
+    s1_overall: number | null;
+    s1_personal: number | null;
+    s2_overall: number | null;
+    s2_personal: number | null;
+    s3_overall: number | null;
+    s3_personal: number | null;
+  }>>({});
+  const [overallBestLap, setOverallBestLap] = useState<number | null>(null);
+  const [overallBestS1, setOverallBestS1] = useState<number | null>(null);
+  const [overallBestS2, setOverallBestS2] = useState<number | null>(null);
+  const [overallBestS3, setOverallBestS3] = useState<number | null>(null);
 
   useEffect(() => {
     // Collect all drivers with position changes
@@ -36,6 +50,85 @@ const DriverPositionsList: React.FC<DriverPositionsListProps> = ({
       return () => clearTimeout(timer);
     }
   }, [positions, previousPositions]);
+
+  // Track best lap times
+  useEffect(() => {
+    // Create a copy of current best times
+    const updatedBestLapTimes = { ...bestLapTimes };
+    let newOverallBestLap = overallBestLap;
+    let newOverallBestS1 = overallBestS1;
+    let newOverallBestS2 = overallBestS2;
+    let newOverallBestS3 = overallBestS3;
+    
+    // Check for new best times
+    Object.entries(lapData).forEach(([driverNumber, lap]) => {
+      const driverNum = parseInt(driverNumber);
+      
+      // Initialize driver best times if not present
+      if (!updatedBestLapTimes[driverNum]) {
+        updatedBestLapTimes[driverNum] = {
+          overall: null,
+          personal: null,
+          s1_overall: null,
+          s1_personal: null,
+          s2_overall: null,
+          s2_personal: null,
+          s3_overall: null,
+          s3_personal: null
+        };
+      }
+      
+      // Update personal best lap time
+      if (lap.lap_duration && (!updatedBestLapTimes[driverNum].personal || lap.lap_duration < updatedBestLapTimes[driverNum].personal!)) {
+        updatedBestLapTimes[driverNum].personal = lap.lap_duration;
+        
+        // Check if it's also the overall best
+        if (!newOverallBestLap || lap.lap_duration < newOverallBestLap) {
+          newOverallBestLap = lap.lap_duration;
+          updatedBestLapTimes[driverNum].overall = lap.lap_duration;
+        }
+      }
+      
+      // Update sector times similarly
+      if (lap.duration_sector_1) {
+        if (!updatedBestLapTimes[driverNum].s1_personal || lap.duration_sector_1 < updatedBestLapTimes[driverNum].s1_personal!) {
+          updatedBestLapTimes[driverNum].s1_personal = lap.duration_sector_1;
+          if (!newOverallBestS1 || lap.duration_sector_1 < newOverallBestS1) {
+            newOverallBestS1 = lap.duration_sector_1;
+            updatedBestLapTimes[driverNum].s1_overall = lap.duration_sector_1;
+          }
+        }
+      }
+      
+      if (lap.duration_sector_2) {
+        if (!updatedBestLapTimes[driverNum].s2_personal || lap.duration_sector_2 < updatedBestLapTimes[driverNum].s2_personal!) {
+          updatedBestLapTimes[driverNum].s2_personal = lap.duration_sector_2;
+          if (!newOverallBestS2 || lap.duration_sector_2 < newOverallBestS2) {
+            newOverallBestS2 = lap.duration_sector_2;
+            updatedBestLapTimes[driverNum].s2_overall = lap.duration_sector_2;
+          }
+        }
+      }
+      
+      if (lap.duration_sector_3) {
+        if (!updatedBestLapTimes[driverNum].s3_personal || lap.duration_sector_3 < updatedBestLapTimes[driverNum].s3_personal!) {
+          updatedBestLapTimes[driverNum].s3_personal = lap.duration_sector_3;
+          if (!newOverallBestS3 || lap.duration_sector_3 < newOverallBestS3) {
+            newOverallBestS3 = lap.duration_sector_3;
+            updatedBestLapTimes[driverNum].s3_overall = lap.duration_sector_3;
+          }
+        }
+      }
+    });
+    
+    // Update state with new best times
+    setBestLapTimes(updatedBestLapTimes);
+    setOverallBestLap(newOverallBestLap);
+    setOverallBestS1(newOverallBestS1);
+    setOverallBestS2(newOverallBestS2);
+    setOverallBestS3(newOverallBestS3);
+    
+  }, [lapData]);
 
   const getPositionChange = (driverNumber: number, currentPosition: number): 'improved' | 'worsened' | 'unchanged' => {
     const prevPosition = previousPositions[driverNumber];
@@ -74,6 +167,11 @@ const DriverPositionsList: React.FC<DriverPositionsListProps> = ({
               driver={driver}
               positionChange={positionChange}
               driverLap={driverLap}
+              bestLapTimes={bestLapTimes}
+              overallBestLap={overallBestLap}
+              overallBestS1={overallBestS1}
+              overallBestS2={overallBestS2}
+              overallBestS3={overallBestS3}
             />
           );
         })}

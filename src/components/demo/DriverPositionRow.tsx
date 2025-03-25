@@ -9,13 +9,32 @@ interface DriverPositionRowProps {
   driver: Driver | undefined;
   positionChange: 'improved' | 'worsened' | 'unchanged';
   driverLap: LapData | undefined;
+  bestLapTimes: Record<number, {
+    overall: number | null;
+    personal: number | null;
+    s1_overall: number | null;
+    s1_personal: number | null;
+    s2_overall: number | null;
+    s2_personal: number | null;
+    s3_overall: number | null;
+    s3_personal: number | null;
+  }>;
+  overallBestLap: number | null;
+  overallBestS1: number | null;
+  overallBestS2: number | null;
+  overallBestS3: number | null;
 }
 
 const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
   position,
   driver,
   positionChange,
-  driverLap
+  driverLap,
+  bestLapTimes,
+  overallBestLap,
+  overallBestS1,
+  overallBestS2,
+  overallBestS3
 }) => {
   const teamColor = driver?.team_colour ? `#${driver.team_colour}` : '#FFFFFF';
   const [animatePosition, setAnimatePosition] = useState(false);
@@ -37,6 +56,25 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
     
     return `${mins > 0 ? mins + ':' : ''}${secs.toString().padStart(mins > 0 ? 2 : 1, '0')}.${ms.toString().padStart(3, '0')}`;
   };
+
+  const getLapTimeClass = (lapTime: number | undefined, personalBest: number | null, overallBest: number | null) => {
+    if (!lapTime) return "";
+    
+    // Is this the overall best time?
+    if (overallBest && Math.abs(lapTime - overallBest) < 0.001) {
+      return "text-purple-400 font-bold";
+    }
+    
+    // Is this a personal best time?
+    if (personalBest && lapTime <= personalBest) {
+      return "text-green-400";
+    }
+    
+    return "";
+  };
+
+  // Get the best times for this driver
+  const driverBest = position.driver_number && bestLapTimes[position.driver_number];
 
   return (
     <div 
@@ -73,22 +111,34 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
       </div>
       
       {/* Last Lap */}
-      <div className="col-span-2 font-mono text-xs">
+      <div className={cn(
+        "col-span-2 font-mono text-xs",
+        driverLap && getLapTimeClass(driverLap.lap_duration, driverBest?.personal, overallBestLap)
+      )}>
         {driverLap ? formatLapTime(driverLap.lap_duration) : '-'}
       </div>
       
       {/* S1 */}
-      <div className="col-span-2 font-mono text-xs">
+      <div className={cn(
+        "col-span-2 font-mono text-xs",
+        driverLap && getLapTimeClass(driverLap.duration_sector_1, driverBest?.s1_personal, overallBestS1)
+      )}>
         {driverLap ? formatLapTime(driverLap.duration_sector_1) : '-'}
       </div>
       
       {/* S2 */}
-      <div className="col-span-2 font-mono text-xs">
+      <div className={cn(
+        "col-span-2 font-mono text-xs",
+        driverLap && getLapTimeClass(driverLap.duration_sector_2, driverBest?.s2_personal, overallBestS2)
+      )}>
         {driverLap ? formatLapTime(driverLap.duration_sector_2) : '-'}
       </div>
       
       {/* S3 */}
-      <div className="col-span-2 font-mono text-xs">
+      <div className={cn(
+        "col-span-2 font-mono text-xs",
+        driverLap && getLapTimeClass(driverLap.duration_sector_3, driverBest?.s3_personal, overallBestS3)
+      )}>
         {driverLap ? formatLapTime(driverLap.duration_sector_3) : '-'}
       </div>
     </div>

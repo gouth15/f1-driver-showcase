@@ -222,81 +222,12 @@ const LiveTiming: React.FC = () => {
         )}
         
         {!loading && driverPositions.length > 0 && (
-          <div className="space-y-1">
-            <div className="grid grid-cols-12 gap-1 text-xs text-f1-silver/80 mb-1 px-2">
-              <div className="col-span-1">Pos</div>
-              <div className="col-span-3">Driver</div>
-              <div className="col-span-2">Last Lap</div>
-              <div className="col-span-2">S1</div>
-              <div className="col-span-2">S2</div>
-              <div className="col-span-2">S3</div>
-            </div>
-            
-            {driverPositions.map((position) => {
-              const driver = getDriverByNumber(position.driver_number);
-              const positionChange = getPositionChange(position.driver_number, position.position);
-              const teamColor = driver?.team_colour ? `#${driver.team_colour}` : '#FFFFFF';
-              const driverLap = lapData[position.driver_number];
-              
-              return (
-                <div 
-                  key={position.driver_number}
-                  className={cn(
-                    "grid grid-cols-12 gap-1 p-2 rounded-md border-l-4 items-center transition-all duration-300 h-10",
-                    "bg-f1-navy/60 border-f1-silver/20",
-                    positionChange === 'improved' && "border-l-green-500 animate-slide-in-right",
-                    positionChange === 'worsened' && "border-l-red-500 animate-slide-in-right"
-                  )}
-                  style={{ borderLeftColor: teamColor }}
-                >
-                  <div className="col-span-1 font-bold flex items-center">
-                    <span 
-                      className="flex items-center justify-center text-sm"
-                    >
-                      {position.position}
-                      {positionChange === 'improved' && (
-                        <ChevronUp className="h-3 w-3 text-green-400 ml-1" />
-                      )}
-                      {positionChange === 'worsened' && (
-                        <ChevronDown className="h-3 w-3 text-red-400 ml-1" />
-                      )}
-                    </span>
-                  </div>
-                  
-                  <div className="col-span-3 flex items-center">
-                    <div 
-                      className="h-7 w-2 rounded-sm mr-2"
-                      style={{ backgroundColor: teamColor }}
-                    ></div>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-sm">
-                        {driver ? driver.name_acronym : `#${position.driver_number}`}
-                      </span>
-                      <span className="text-xs text-f1-silver/70 -mt-1">
-                        {driver?.team_name?.split(' ')[0] || ''}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="col-span-2 font-mono text-xs">
-                    {driverLap ? formatLapTime(driverLap.lap_duration) : '-'}
-                  </div>
-                  
-                  <div className="col-span-2 font-mono text-xs">
-                    {driverLap ? formatLapTime(driverLap.duration_sector_1) : '-'}
-                  </div>
-                  
-                  <div className="col-span-2 font-mono text-xs">
-                    {driverLap ? formatLapTime(driverLap.duration_sector_2) : '-'}
-                  </div>
-                  
-                  <div className="col-span-2 font-mono text-xs">
-                    {driverLap ? formatLapTime(driverLap.duration_sector_3) : '-'}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <DriverPositionsList 
+            positions={driverPositions}
+            drivers={drivers}
+            lapData={lapData}
+            previousPositions={previousPositions}
+          />
         )}
         
         {!loading && driverPositions.length === 0 && (
