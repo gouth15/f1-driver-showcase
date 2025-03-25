@@ -50,45 +50,44 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
         borderLeftColor: teamColor,
       }}
     >
-      <div className="col-span-1 font-bold flex items-center">
-        <span className="flex items-center justify-center text-sm">
-          {position.position}
-          {positionChange === 'improved' && (
-            <ChevronUp className="h-3 w-3 text-green-400 ml-1" />
-          )}
-          {positionChange === 'worsened' && (
-            <ChevronDown className="h-3 w-3 text-red-400 ml-1" />
-          )}
+      {/* Position + Change Indicator */}
+      <div className="col-span-1 font-bold">
+        {position.position}
+        {positionChange === 'improved' && (
+          <ChevronUp className="h-3 w-3 text-green-400 inline ml-1" />
+        )}
+        {positionChange === 'worsened' && (
+          <ChevronDown className="h-3 w-3 text-red-400 inline ml-1" />
+        )}
+      </div>
+      
+      {/* Driver Name + Team */}
+      <div className="col-span-3 flex items-center">
+        <div 
+          className="h-5 w-1 rounded-sm mr-1"
+          style={{ backgroundColor: teamColor }}
+        ></div>
+        <span className="font-bold text-sm">
+          {driver ? driver.name_acronym : `#${position.driver_number}`}
         </span>
       </div>
       
-      <div className="col-span-3 flex items-center">
-        <div 
-          className="h-7 w-2 rounded-sm mr-2"
-          style={{ backgroundColor: teamColor }}
-        ></div>
-        <div className="flex flex-col">
-          <span className="font-bold text-sm">
-            {driver ? driver.name_acronym : `#${position.driver_number}`}
-          </span>
-          <span className="text-xs text-f1-silver/70 -mt-1">
-            {driver?.team_name?.split(' ')[0] || ''}
-          </span>
-        </div>
-      </div>
-      
+      {/* Last Lap */}
       <div className="col-span-2 font-mono text-xs">
         {driverLap ? formatLapTime(driverLap.lap_duration) : '-'}
       </div>
       
+      {/* S1 */}
       <div className="col-span-2 font-mono text-xs">
         {driverLap ? formatLapTime(driverLap.duration_sector_1) : '-'}
       </div>
       
+      {/* S2 */}
       <div className="col-span-2 font-mono text-xs">
         {driverLap ? formatLapTime(driverLap.duration_sector_2) : '-'}
       </div>
       
+      {/* S3 */}
       <div className="col-span-2 font-mono text-xs">
         {driverLap ? formatLapTime(driverLap.duration_sector_3) : '-'}
       </div>
