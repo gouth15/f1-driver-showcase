@@ -1,14 +1,13 @@
-
 import { Driver, LapData, DriverPosition, RaceControlMessage, DemoState } from '@/types/f1';
 
 export async function fetchF1Data() {
   try {
-    // Fetch all data types in parallel
+    // Fetch all data types in parallel with session_key=9994
     const [driversResponse, lapsResponse, positionsResponse, messagesResponse] = await Promise.all([
-      fetch('https://api.openf1.org/v1/drivers?session_key=latest'),
-      fetch('https://api.openf1.org/v1/laps?session_key=latest'),
-      fetch('https://api.openf1.org/v1/position?session_key=latest'),
-      fetch('https://api.openf1.org/v1/race_control_messages?session_key=latest')
+      fetch('https://api.openf1.org/v1/drivers?session_key=9994'),
+      fetch('https://api.openf1.org/v1/laps?session_key=9994'),
+      fetch('https://api.openf1.org/v1/position?session_key=9994'),
+      fetch('https://api.openf1.org/v1/race_control_messages?session_key=9994')
     ]);
     
     if (!driversResponse.ok || !lapsResponse.ok || !positionsResponse.ok || !messagesResponse.ok) {
