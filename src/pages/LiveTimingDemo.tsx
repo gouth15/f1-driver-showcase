@@ -44,7 +44,7 @@ const LiveTimingDemo: React.FC = () => {
       
       toast({
         title: "Data Loaded",
-        description: `Loaded ${data.drivers.length} drivers, ${data.laps.length} lap entries, ${data.positions.length} position updates, and ${data.messages.length} messages`,
+        description: `Loaded ${data.drivers.length} drivers, ${data.positions.length} position updates, ${data.laps.length} lap entries, and ${data.messages.length} messages for simulation`,
         duration: 3000,
       });
       
@@ -87,8 +87,9 @@ const LiveTimingDemo: React.FC = () => {
           onReloadData={fetchApiData}
         />
         
-        <div className="text-xs font-mono bg-f1-navy/60 px-2 py-1 rounded mb-2">
-          {lapDataCount > 0 ? `Using ${lapDataCount} real data points` : 'No data loaded'}
+        <div className="text-xs font-mono bg-f1-navy/60 px-2 py-1 rounded mb-2 flex justify-between">
+          <span>{lapDataCount > 0 ? `Using ${lapDataCount} real data points` : 'No data loaded'}</span>
+          <span className="text-f1-silver/70">Data-Driven Demo</span>
         </div>
         
         {demoState.positions.length > 0 && (

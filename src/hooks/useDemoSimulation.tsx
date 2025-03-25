@@ -23,7 +23,13 @@ export function useDemoSimulation() {
   const lapDataRef = useRef<LapData[]>([]);
   const messagesDataRef = useRef<RaceControlMessage[]>([]);
   
-  const dataIndexRef = useRef<number>(0);
+  // Current index for iterating through position data
+  const positionIndexRef = useRef<number>(0);
+  // Track the last time we processed a message
+  const lapIndexRef = useRef<number>(0);
+  // Track the message data index
+  const messageIndexRef = useRef<number>(0);
+  
   const { toast } = useToast();
 
   const initializeState = useCallback(() => {
@@ -45,6 +51,11 @@ export function useDemoSimulation() {
       positionMap[pos.driver_number] = pos.position;
     });
     setPreviousPositions(positionMap);
+    
+    // Reset all indexes
+    positionIndexRef.current = 0;
+    lapIndexRef.current = 0;
+    messageIndexRef.current = 0;
   }, []);
 
   const setApiData = useCallback((data: {
@@ -54,23 +65,34 @@ export function useDemoSimulation() {
     messages: RaceControlMessage[]
   }) => {
     driversDataRef.current = data.drivers;
-    positionsDataRef.current = data.positions;
-    lapDataRef.current = data.laps;
-    messagesDataRef.current = data.messages;
     
-    // Reset index
-    dataIndexRef.current = 0;
+    // Sort positions by date for proper time sequencing
+    positionsDataRef.current = data.positions.sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    
+    // Sort laps by date for proper time sequencing
+    lapDataRef.current = data.laps.sort((a, b) => 
+      new Date(a.date_start).getTime() - new Date(b.date_start).getTime()
+    );
+    
+    // Sort messages by date
+    messagesDataRef.current = data.messages.sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    
+    // Reset all indexes
+    positionIndexRef.current = 0;
+    lapIndexRef.current = 0;
+    messageIndexRef.current = 0;
   }, []);
 
   const updateSimulation = useCallback(() => {
     // Skip update if no data has been loaded
     if (
       driversDataRef.current.length === 0 || 
-      lapDataRef.current.length === 0
+      positionsDataRef.current.length === 0
     ) return;
-    
-    // Update data index
-    dataIndexRef.current = (dataIndexRef.current + 1) % lapDataRef.current.length;
     
     setDemoState(prevState => {
       // Store current positions for animation
@@ -81,150 +103,114 @@ export function useDemoSimulation() {
       
       setPreviousPositions(currentPositionMap);
       
-      // Get current lap data based on index
-      const currentLapData = lapDataRef.current[dataIndexRef.current];
+      // Get next batch of position data (move this index forward)
+      const positionBatchSize = Math.min(3, positionsDataRef.current.length - positionIndexRef.current);
+      const nextPositionIndex = Math.min(
+        positionIndexRef.current + positionBatchSize, 
+        positionsDataRef.current.length - 1
+      );
       
-      // Update positions with more significant changes occasionally
+      // Get positions for this time slice
+      const currentPositionData = positionsDataRef.current.slice(
+        positionIndexRef.current, 
+        nextPositionIndex
+      );
+      
+      // Update position index for next time
+      positionIndexRef.current = nextPositionIndex;
+      
+      // If we've reached the end, loop back to the beginning
+      if (positionIndexRef.current >= positionsDataRef.current.length - 1) {
+        positionIndexRef.current = 0;
+      }
+      
+      // Process the new position data
       let newPositions = [...prevState.positions];
       
-      // Determine if we should make a significant position change (e.g., driver moving multiple places)
-      const makeSignificantChange = Math.random() > 0.7;
-      
-      if (makeSignificantChange) {
-        // Pick a random driver to move up or down multiple positions
-        const driverIndexToMove = Math.floor(Math.random() * newPositions.length);
-        const driverToMove = newPositions[driverIndexToMove];
-        const currentPosition = driverToMove.position;
+      // Update positions based on real data if available
+      if (currentPositionData.length > 0) {
+        const latestByDriver = new Map<number, DriverPosition>();
         
-        // Decide whether to move up or down
-        const moveUp = Math.random() > 0.5;
-        
-        // Determine how many positions to move (2-5 positions)
-        const positionsToMove = Math.floor(Math.random() * 4) + 2;
-        
-        // Calculate target position
-        let targetPosition;
-        if (moveUp) {
-          // Moving up means a lower position number
-          targetPosition = Math.max(1, currentPosition - positionsToMove);
-        } else {
-          // Moving down means a higher position number
-          targetPosition = Math.min(newPositions.length, currentPosition + positionsToMove);
-        }
-        
-        // Skip if no actual change
-        if (targetPosition === currentPosition) {
-          // Just make a simple swap instead
-          const idx1 = Math.floor(Math.random() * newPositions.length);
-          let idx2 = Math.floor(Math.random() * newPositions.length);
-          while (idx2 === idx1) {
-            idx2 = Math.floor(Math.random() * newPositions.length);
+        // Get latest position update for each driver in this batch
+        currentPositionData.forEach(pos => {
+          const existing = latestByDriver.get(pos.driver_number);
+          if (!existing || new Date(pos.date) > new Date(existing.date)) {
+            latestByDriver.set(pos.driver_number, pos);
           }
+        });
+        
+        // Apply the latest position updates
+        latestByDriver.forEach((newPos) => {
+          const driverIdx = newPositions.findIndex(p => p.driver_number === newPos.driver_number);
           
-          const pos1 = newPositions[idx1].position;
-          const pos2 = newPositions[idx2].position;
-          
-          newPositions[idx1] = {
-            ...newPositions[idx1],
-            position: pos2,
-            date: new Date().toISOString()
-          };
-          
-          newPositions[idx2] = {
-            ...newPositions[idx2],
-            position: pos1,
-            date: new Date().toISOString()
-          };
-        } else {
-          // Reorder all affected positions
-          newPositions = newPositions.map(pos => {
-            // The driver that is moving
-            if (pos.driver_number === driverToMove.driver_number) {
-              return {
-                ...pos,
-                position: targetPosition,
-                date: new Date().toISOString()
-              };
-            }
-            
-            // Other drivers affected by the move
-            if (moveUp) {
-              // When a driver moves up, others in between move down
-              if (pos.position >= targetPosition && pos.position < currentPosition) {
-                return {
-                  ...pos,
-                  position: pos.position + 1,
-                  date: new Date().toISOString()
-                };
-              }
-            } else {
-              // When a driver moves down, others in between move up
-              if (pos.position <= targetPosition && pos.position > currentPosition) {
-                return {
-                  ...pos,
-                  position: pos.position - 1,
-                  date: new Date().toISOString()
-                };
-              }
-            }
-            
-            // Drivers not affected by the move
-            return pos;
-          });
+          if (driverIdx !== -1) {
+            // Update this driver's position
+            newPositions[driverIdx] = {
+              ...newPositions[driverIdx],
+              position: newPos.position,
+              date: new Date().toISOString() // Use current time for smooth animation
+            };
+          }
+        });
+        
+        // Resort by position
+        newPositions.sort((a, b) => a.position - b.position);
+      }
+      
+      // Get lap data for this time slice
+      const lapBatchSize = Math.min(2, lapDataRef.current.length - lapIndexRef.current);
+      const nextLapIndex = Math.min(
+        lapIndexRef.current + lapBatchSize, 
+        lapDataRef.current.length - 1
+      );
+      
+      const currentLapData = lapDataRef.current.slice(
+        lapIndexRef.current, 
+        nextLapIndex
+      );
+      
+      // Update lap index for next time
+      lapIndexRef.current = nextLapIndex;
+      
+      // If we've reached the end, loop back to the beginning
+      if (lapIndexRef.current >= lapDataRef.current.length - 1) {
+        lapIndexRef.current = 0;
+      }
+      
+      // Process the new lap data
+      const newLapData = { ...prevState.lapData };
+      
+      currentLapData.forEach(lap => {
+        newLapData[lap.driver_number] = lap;
+      });
+      
+      // Get message data for this time slice
+      let newMessages = [...prevState.messages];
+      if (messagesDataRef.current.length > 0 && Math.random() > 0.7) {
+        const nextMessageIndex = Math.min(
+          messageIndexRef.current + 1, 
+          messagesDataRef.current.length - 1
+        );
+        
+        const newMessage = messagesDataRef.current[messageIndexRef.current];
+        
+        // Update message index for next time
+        messageIndexRef.current = nextMessageIndex;
+        
+        // If we've reached the end, loop back to the beginning
+        if (messageIndexRef.current >= messagesDataRef.current.length - 1) {
+          messageIndexRef.current = 0;
         }
         
-        // Sort the positions array by position
-        newPositions.sort((a, b) => a.position - b.position);
-      } else {
-        // Simple position swap between two adjacent drivers
-        const idx1 = Math.floor(Math.random() * (newPositions.length - 1));
-        const idx2 = idx1 + 1;
-        
-        const pos1 = newPositions[idx1].position;
-        const pos2 = newPositions[idx2].position;
-        
-        newPositions[idx1] = {
-          ...newPositions[idx1],
-          position: pos2,
-          date: new Date().toISOString()
-        };
-        
-        newPositions[idx2] = {
-          ...newPositions[idx2],
-          position: pos1,
-          date: new Date().toISOString()
-        };
-        
-        // Sort by position
-        newPositions.sort((a, b) => a.position - b.position);
-      }
-      
-      // Update lap data for a random driver
-      const randomDriverIndex = Math.floor(Math.random() * prevState.drivers.length);
-      const randomDriverNumber = prevState.drivers[randomDriverIndex]?.driver_number;
-      
-      const newLapData = { ...prevState.lapData };
-      if (randomDriverNumber && currentLapData) {
-        newLapData[randomDriverNumber] = {
-          ...currentLapData,
-          driver_number: randomDriverNumber
-        };
-      }
-      
-      // Maybe add a new race control message
-      let newMessages = [...prevState.messages];
-      if (Math.random() > 0.8 && messagesDataRef.current.length > 0) {
-        const randomMessageIndex = Math.floor(Math.random() * messagesDataRef.current.length);
-        const randomMessage = messagesDataRef.current[randomMessageIndex];
-        const now = new Date().toISOString();
-        
-        if (randomMessage) {
+        if (newMessage) {
+          const now = new Date().toISOString();
+          
           newMessages = [
             {
               date: now,
-              message: randomMessage.message,
-              category: randomMessage.category || "Race Control",
-              flag: randomMessage.flag || "none"
+              message: newMessage.message,
+              category: newMessage.category || "Race Control",
+              flag: newMessage.flag || "none"
             },
             ...newMessages
           ];
@@ -232,7 +218,7 @@ export function useDemoSimulation() {
           if (lastMessageTimeRef.current !== now) {
             toast({
               title: "Race Control",
-              description: randomMessage.message,
+              description: newMessage.message,
               duration: 5000,
             });
             
@@ -257,7 +243,12 @@ export function useDemoSimulation() {
     }
     
     setPreviousPositions({});
-    dataIndexRef.current = 0;
+    
+    // Reset all indexes
+    positionIndexRef.current = 0;
+    lapIndexRef.current = 0;
+    messageIndexRef.current = 0;
+    
     initializeState();
     lastMessageTimeRef.current = null;
     
@@ -305,3 +296,4 @@ export function useDemoSimulation() {
     lapDataCount: lapDataRef.current.length
   };
 }
+
