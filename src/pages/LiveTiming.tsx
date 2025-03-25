@@ -4,6 +4,7 @@ import { Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Navbar from '@/components/Navbar';
 import { cn } from '@/lib/utils';
+import DriverPositionsList from '@/components/demo/DriverPositionsList';
 
 const LiveTiming: React.FC = () => {
   const [driverPositions, setDriverPositions] = useState<DriverPosition[]>([]);
