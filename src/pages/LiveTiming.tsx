@@ -4,7 +4,8 @@ import { Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Navbar from '@/components/Navbar';
 import { cn } from '@/lib/utils';
-import DriverPositionsList from '@/components/demo/DriverPositionsList';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 
 const LiveTiming: React.FC = () => {
   const [driverPositions, setDriverPositions] = useState<DriverPosition[]>([]);
@@ -183,17 +184,17 @@ const LiveTiming: React.FC = () => {
   };
   
   return (
-    <div className="min-h-screen bg-f1-navy text-white">
+    <div className="min-h-screen bg-f1-navy text-white overflow-hidden flex flex-col">
       <Navbar />
       
-      <div className="h-16"></div>
+      <div className="h-14"></div>
       
-      <div className="container mx-auto px-2 py-2">
-        <div className="mb-4 flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
+      <div className="container mx-auto px-1 py-1 max-h-[calc(100vh-56px)] flex-1">
+        <div className="mb-2 flex items-center justify-between flex-wrap gap-1">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setIsPolling(!isPolling)}
-              className={`flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              className={`flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors ${
                 isPolling ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
               }`}
             >
@@ -208,7 +209,7 @@ const LiveTiming: React.FC = () => {
                   fetchDriverPositions();
                   fetchLapData();
                 }}
-                className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-full text-xs font-medium transition-colors"
+                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded-full text-xs font-medium transition-colors"
               >
                 Refresh Now
               </button>
@@ -223,16 +224,105 @@ const LiveTiming: React.FC = () => {
         )}
         
         {!loading && driverPositions.length > 0 && (
-          <DriverPositionsList 
-            positions={driverPositions}
-            drivers={drivers}
-            lapData={lapData}
-            previousPositions={previousPositions}
-          />
+          <Table className="border-collapse">
+            <TableHeader className="bg-f1-navy/80">
+              <TableRow className="border-b border-f1-silver/20">
+                <TableHead className="py-1 px-2 text-xs w-12">Pos</TableHead>
+                <TableHead className="py-1 px-2 text-xs">Driver</TableHead>
+                <TableHead className="py-1 px-2 text-xs text-right hidden sm:table-cell">Last Lap</TableHead>
+                <TableHead className="py-1 px-2 text-xs text-right hidden md:table-cell">S1</TableHead>
+                <TableHead className="py-1 px-2 text-xs text-right hidden md:table-cell">S2</TableHead>
+                <TableHead className="py-1 px-2 text-xs text-right hidden md:table-cell">S3</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {driverPositions.map((position) => {
+                const driver = drivers.find(d => d.driver_number === position.driver_number);
+                const driverLap = lapData[position.driver_number];
+                const prevPosition = previousPositions[position.driver_number];
+                const teamColor = driver?.team_colour || '#FFFFFF';
+                const positionChange = prevPosition !== undefined 
+                  ? position.position < prevPosition 
+                    ? 'improved' 
+                    : position.position > prevPosition 
+                      ? 'worsened' 
+                      : 'unchanged'
+                  : 'unchanged';
+
+                const formatLapTime = (seconds: number | undefined) => {
+                  if (!seconds) return '-';
+                  
+                  const mins = Math.floor(seconds / 60);
+                  const secs = Math.floor(seconds % 60);
+                  const ms = Math.floor((seconds % 1) * 1000);
+                  
+                  return `${mins > 0 ? mins + ':' : ''}${secs.toString().padStart(mins > 0 ? 2 : 1, '0')}.${ms.toString().padStart(3, '0')}`;
+                };
+                
+                return (
+                  <TableRow 
+                    key={position.driver_number}
+                    className={cn(
+                      "border-b border-f1-silver/10 hover:bg-f1-navy/60 h-8",
+                      positionChange === 'improved' && "bg-green-900/10",
+                      positionChange === 'worsened' && "bg-red-900/10"
+                    )}
+                  >
+                    <TableCell className="py-0 px-2 font-mono text-center">
+                      <div className="flex items-center">
+                        <span className="font-bold">{position.position}</span>
+                        <div className="ml-1">
+                          {positionChange === 'improved' && (
+                            <ChevronUp className="h-3 w-3 text-green-500" />
+                          )}
+                          {positionChange === 'worsened' && (
+                            <ChevronDown className="h-3 w-3 text-red-500" />
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-0 px-2">
+                      <div className="flex items-center">
+                        <div 
+                          className="w-1 h-6 mr-2 rounded-sm"
+                          style={{ backgroundColor: teamColor }}
+                        ></div>
+                        <div>
+                          <div className="flex items-center">
+                            <span className="font-medium text-sm">
+                              {driver?.name_acronym || `#${position.driver_number}`}
+                            </span>
+                            <span className="ml-2 text-xs text-f1-silver/60">
+                              {position.driver_number}
+                            </span>
+                          </div>
+                          <div className="text-xs text-f1-silver/70">
+                            {driver?.team_name || '-'}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-0 px-2 text-right font-mono text-xs hidden sm:table-cell">
+                      {driverLap?.lap_duration ? formatLapTime(driverLap.lap_duration) : '-'}
+                    </TableCell>
+                    <TableCell className="py-0 px-2 text-right font-mono text-xs hidden md:table-cell">
+                      {driverLap?.duration_sector_1 ? formatLapTime(driverLap.duration_sector_1) : '-'}
+                    </TableCell>
+                    <TableCell className="py-0 px-2 text-right font-mono text-xs hidden md:table-cell">
+                      {driverLap?.duration_sector_2 ? formatLapTime(driverLap.duration_sector_2) : '-'}
+                    </TableCell>
+                    <TableCell className="py-0 px-2 text-right font-mono text-xs hidden md:table-cell">
+                      {driverLap?.duration_sector_3 ? formatLapTime(driverLap.duration_sector_3) : '-'}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
         
         {!loading && driverPositions.length === 0 && (
-          <div className="text-center py-12 bg-f1-navy/30 rounded-lg">
+          <div className="text-center py-6 bg-f1-navy/30 rounded-lg">
             <p className="text-f1-white/70">
               No position data available for the current session.
             </p>
