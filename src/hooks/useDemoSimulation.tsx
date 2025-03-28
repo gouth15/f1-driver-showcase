@@ -1,7 +1,9 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback } from 'react';
 import { RaceControlMessage, DriverPosition, Driver, LapData, DemoState } from '@/types/f1';
 import { useToast } from "@/hooks/use-toast";
+import { useTimelineData } from '@/hooks/useTimelineData';
+import { useSimulationState } from '@/hooks/useSimulationState';
 import {
   createEmptyDemoState,
   createInitialPositions,
@@ -9,33 +11,34 @@ import {
   initializeDemoState
 } from '@/services/f1DataService';
 
-// Define the data item type with date property
-interface DataItem {
-  type: 'position' | 'lap' | 'message';
-  data: any;
-  date: number; // Timestamp for sorting
-}
-
 export function useDemoSimulation() {
-  const [demoState, setDemoState] = useState<DemoState>(createEmptyDemoState());
-  const [previousPositions, setPreviousPositions] = useState<Record<number, number>>({});
-  const [isRunning, setIsRunning] = useState(true);
-  const [speed, setSpeed] = useState(1); // 1 = normal, 2 = 2x speed, etc.
-  const [isLoading, setIsLoading] = useState(false);
-  const intervalRef = useRef<number | null>(null);
-  const lastMessageTimeRef = useRef<string | null>(null);
-  
-  // API data storage
-  const driversDataRef = useRef<Driver[]>([]);
-  const positionsDataRef = useRef<DriverPosition[]>([]);
-  const lapDataRef = useRef<LapData[]>([]);
-  const messagesDataRef = useRef<RaceControlMessage[]>([]);
-  
-  // Single, unified data index for sequential processing
-  const dataIndexRef = useRef<number>(0);
-  
-  // Array to hold all data items sorted by date
-  const sortedDataRef = useRef<DataItem[]>([]);
+  const {
+    driversDataRef,
+    positionsDataRef,
+    lapDataRef,
+    messagesDataRef,
+    dataIndexRef,
+    sortedDataRef,
+    setApiData: setTimelineData,
+    processTimelineData,
+    resetDataIndex
+  } = useTimelineData();
+
+  const {
+    demoState,
+    setDemoState,
+    previousPositions,
+    setPreviousPositions,
+    isRunning,
+    setIsRunning,
+    speed,
+    setSpeed,
+    isLoading,
+    setIsLoading,
+    intervalRef,
+    lastMessageTimeRef,
+    setupIntervalUpdates
+  } = useSimulationState();
   
   const { toast } = useToast();
 
@@ -59,34 +62,10 @@ export function useDemoSimulation() {
     });
     setPreviousPositions(positionMap);
     
-    // Reset data index
-    dataIndexRef.current = 0;
-    
-    // Sort and combine all data into a unified timeline
-    const allDataItems: DataItem[] = [
-      ...positionsDataRef.current.map(item => ({
-        type: 'position' as const,
-        data: item,
-        date: new Date(item.date).getTime()
-      })),
-      ...lapDataRef.current.map(item => ({
-        type: 'lap' as const,
-        data: item,
-        date: new Date(item.date_start).getTime()
-      })),
-      ...messagesDataRef.current.map(item => ({
-        type: 'message' as const,
-        data: item,
-        date: new Date(item.date).getTime()
-      }))
-    ];
-    
-    // Sort by date
-    allDataItems.sort((a, b) => a.date - b.date);
-    
-    sortedDataRef.current = allDataItems;
-    console.log(`Initialized ${allDataItems.length} data items in timeline`);
-  }, []);
+    // Reset data index and process timeline data
+    resetDataIndex();
+    processTimelineData();
+  }, [processTimelineData, resetDataIndex, setDemoState, setPreviousPositions]);
 
   const setApiData = useCallback((data: {
     drivers: Driver[],
@@ -94,14 +73,8 @@ export function useDemoSimulation() {
     laps: LapData[],
     messages: RaceControlMessage[]
   }) => {
-    driversDataRef.current = data.drivers;
-    positionsDataRef.current = data.positions;
-    lapDataRef.current = data.laps;
-    messagesDataRef.current = data.messages;
-    
-    // Reset data index
-    dataIndexRef.current = 0;
-  }, []);
+    setTimelineData(data);
+  }, [setTimelineData]);
 
   const updateSimulation = useCallback(() => {
     // Skip update if no data has been loaded or we've processed all data
@@ -201,7 +174,14 @@ export function useDemoSimulation() {
         messages: newMessages
       };
     });
-  }, [toast]);
+  }, [
+    dataIndexRef,
+    driversDataRef,
+    setPreviousPositions,
+    sortedDataRef,
+    speed,
+    toast
+  ]);
 
   const resetDemo = useCallback(() => {
     if (intervalRef.current !== null) {
@@ -210,10 +190,7 @@ export function useDemoSimulation() {
     }
     
     setPreviousPositions({});
-    
-    // Reset data index
-    dataIndexRef.current = 0;
-    
+    resetDataIndex();
     initializeState();
     lastMessageTimeRef.current = null;
     
@@ -222,28 +199,26 @@ export function useDemoSimulation() {
         updateSimulation();
       }, 2000 / speed);
     }
-  }, [initializeState, isRunning, speed, updateSimulation]);
+  }, [
+    initializeState,
+    intervalRef,
+    isRunning,
+    resetDataIndex,
+    setPreviousPositions,
+    speed,
+    updateSimulation
+  ]);
 
+  // Setup interval for automatic updates
   useEffect(() => {
-    if (isRunning) {
-      if (intervalRef.current !== null) {
-        window.clearInterval(intervalRef.current);
-      }
-      
-      intervalRef.current = window.setInterval(() => {
-        updateSimulation();
-      }, 2000 / speed);
-    } else if (intervalRef.current !== null) {
-      window.clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+    setupIntervalUpdates(updateSimulation);
     
     return () => {
       if (intervalRef.current !== null) {
         window.clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning, speed, updateSimulation]);
+  }, [isRunning, speed, updateSimulation, setupIntervalUpdates, intervalRef]);
 
   return {
     demoState,
