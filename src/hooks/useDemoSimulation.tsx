@@ -9,6 +9,13 @@ import {
   initializeDemoState
 } from '@/services/f1DataService';
 
+// Define the data item type with date property
+interface DataItem {
+  type: 'position' | 'lap' | 'message';
+  data: any;
+  date: number; // Timestamp for sorting
+}
+
 export function useDemoSimulation() {
   const [demoState, setDemoState] = useState<DemoState>(createEmptyDemoState());
   const [previousPositions, setPreviousPositions] = useState<Record<number, number>>({});
@@ -28,7 +35,7 @@ export function useDemoSimulation() {
   const dataIndexRef = useRef<number>(0);
   
   // Array to hold all data items sorted by date
-  const sortedDataRef = useRef<Array<{type: 'position' | 'lap' | 'message', data: any}>>([]);
+  const sortedDataRef = useRef<DataItem[]>([]);
   
   const { toast } = useToast();
 
@@ -56,7 +63,7 @@ export function useDemoSimulation() {
     dataIndexRef.current = 0;
     
     // Sort and combine all data into a unified timeline
-    const allDataItems: Array<{type: 'position' | 'lap' | 'message', data: any}> = [
+    const allDataItems: DataItem[] = [
       ...positionsDataRef.current.map(item => ({
         type: 'position' as const,
         data: item,
