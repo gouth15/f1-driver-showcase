@@ -6,6 +6,8 @@ import DemoControls from '@/components/demo/DemoControls';
 import DriverPositionsList from '@/components/demo/DriverPositionsList';
 import { useDemoSimulation } from '@/hooks/useDemoSimulation';
 import { fetchF1Data } from '@/services/f1DataService';
+import { BellRing, Flag } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const LiveTimingDemo: React.FC = () => {
   const {
@@ -70,12 +72,58 @@ const LiveTimingDemo: React.FC = () => {
   const handleSpeedChange = () => {
     setSpeed(speed === 3 ? 1 : speed + 1);
   };
+
+  // Format time for race control message
+  const formatTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString(undefined, { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: false
+      });
+    } catch (e) {
+      return '';
+    }
+  };
   
   return (
     <div className="min-h-screen bg-f1-navy text-white">
       <Navbar />
       
       <div className="h-16"></div>
+      
+      {/* Race Control Message - Eye-catching */}
+      {demoState.messages.length > 0 && (
+        <div className="fixed top-16 left-0 right-0 z-50 flex justify-center animate-fade-in px-2">
+          <div className={cn(
+            "bg-gradient-to-r from-purple-600 to-blue-600 rounded-md shadow-lg",
+            "border border-purple-400 max-w-3xl w-full py-2 px-4",
+            "animate-enter pulse"
+          )}>
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0 mt-0.5">
+                {demoState.messages[0].flag === "yellow" ? (
+                  <Flag className="h-5 w-5 text-yellow-300" />
+                ) : demoState.messages[0].flag === "red" ? (
+                  <Flag className="h-5 w-5 text-red-500" />
+                ) : (
+                  <BellRing className="h-5 w-5 text-yellow-300 animate-pulse" />
+                )}
+              </div>
+              <div className="flex-1">
+                <div className="font-bold text-sm">
+                  Race Control | {formatTime(demoState.messages[0].date)}
+                </div>
+                <div className="text-white text-sm mt-1">
+                  {demoState.messages[0].message}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="container mx-auto px-2 py-2">
         <DemoControls 

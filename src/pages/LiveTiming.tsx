@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RaceControlMessage, DriverPosition, Driver, LapData } from '@/types/f1';
-import { Clock, ChevronUp, ChevronDown } from 'lucide-react';
+import { Clock, ChevronUp, ChevronDown, Flag, BellRing } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Navbar from '@/components/Navbar';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const LiveTiming: React.FC = () => {
   const [driverPositions, setDriverPositions] = useState<DriverPosition[]>([]);
@@ -14,6 +15,8 @@ const LiveTiming: React.FC = () => {
   const [lapData, setLapData] = useState<Record<number, LapData>>({});
   const [loading, setLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(true);
+  const [latestMessage, setLatestMessage] = useState<RaceControlMessage | null>(null);
+  const [showMessage, setShowMessage] = useState(false);
   const pollingIntervalRef = useRef<number | null>(null);
   const lastMessageTimeRef = useRef<string | null>(null);
   const { toast } = useToast();
@@ -36,6 +39,10 @@ const LiveTiming: React.FC = () => {
         );
         
         if (sortedMessages.length > 0 && lastMessageTimeRef.current !== sortedMessages[0].date) {
+          setLatestMessage(sortedMessages[0]);
+          setShowMessage(true);
+          setTimeout(() => setShowMessage(false), 10000);
+          
           toast({
             title: "Race Control",
             description: sortedMessages[0].message,
@@ -189,6 +196,40 @@ const LiveTiming: React.FC = () => {
       
       <div className="h-14"></div>
       
+      {showMessage && latestMessage && (
+        <div className={cn(
+          "fixed top-16 left-0 right-0 z-50 flex justify-center animate-fade-in",
+          "px-2 transition-opacity duration-300",
+          showMessage ? "opacity-100" : "opacity-0"
+        )}>
+          <div className={cn(
+            "bg-gradient-to-r from-purple-600 to-blue-600 rounded-md shadow-lg",
+            "border border-purple-400 max-w-3xl w-full py-2 px-4",
+            "animate-enter pulse"
+          )}>
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0 mt-0.5">
+                {latestMessage.flag === "yellow" ? (
+                  <Flag className="h-5 w-5 text-yellow-300" />
+                ) : latestMessage.flag === "red" ? (
+                  <Flag className="h-5 w-5 text-red-500" />
+                ) : (
+                  <BellRing className="h-5 w-5 text-yellow-300 animate-pulse" />
+                )}
+              </div>
+              <div className="flex-1">
+                <div className="font-bold text-sm">
+                  Race Control | {formatTime(latestMessage.date)}
+                </div>
+                <div className="text-white text-sm mt-1">
+                  {latestMessage.message}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="container mx-auto px-1 py-1 max-h-[calc(100vh-56px)] flex-1">
         <div className="mb-2 flex items-center justify-between flex-wrap gap-1">
           <div className="flex items-center gap-1">
@@ -227,12 +268,12 @@ const LiveTiming: React.FC = () => {
           <Table className="border-collapse">
             <TableHeader className="bg-f1-navy/80">
               <TableRow className="border-b border-f1-silver/20">
-                <TableHead className="py-1 px-2 text-xs w-12">Pos</TableHead>
-                <TableHead className="py-1 px-2 text-xs">Driver</TableHead>
-                <TableHead className="py-1 px-2 text-xs text-right hidden sm:table-cell">Last Lap</TableHead>
-                <TableHead className="py-1 px-2 text-xs text-right hidden md:table-cell">S1</TableHead>
-                <TableHead className="py-1 px-2 text-xs text-right hidden md:table-cell">S2</TableHead>
-                <TableHead className="py-1 px-2 text-xs text-right hidden md:table-cell">S3</TableHead>
+                <TableHead className="py-0.5 px-2 text-xs w-12 h-6">Pos</TableHead>
+                <TableHead className="py-0.5 px-2 text-xs h-6">Driver</TableHead>
+                <TableHead className="py-0.5 px-2 text-xs text-right hidden sm:table-cell h-6">Last Lap</TableHead>
+                <TableHead className="py-0.5 px-2 text-xs text-right hidden md:table-cell h-6">S1</TableHead>
+                <TableHead className="py-0.5 px-2 text-xs text-right hidden md:table-cell h-6">S2</TableHead>
+                <TableHead className="py-0.5 px-2 text-xs text-right hidden md:table-cell h-6">S3</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -248,29 +289,27 @@ const LiveTiming: React.FC = () => {
                       ? 'worsened' 
                       : 'unchanged'
                   : 'unchanged';
-
-                const formatLapTime = (seconds: number | undefined) => {
-                  if (!seconds) return '-';
-                  
-                  const mins = Math.floor(seconds / 60);
-                  const secs = Math.floor(seconds % 60);
-                  const ms = Math.floor((seconds % 1) * 1000);
-                  
-                  return `${mins > 0 ? mins + ':' : ''}${secs.toString().padStart(mins > 0 ? 2 : 1, '0')}.${ms.toString().padStart(3, '0')}`;
-                };
                 
                 return (
                   <TableRow 
                     key={position.driver_number}
                     className={cn(
-                      "border-b border-f1-silver/10 hover:bg-f1-navy/60 h-8",
+                      "border-b border-f1-silver/10 hover:bg-f1-navy/60 h-7",
                       positionChange === 'improved' && "bg-green-900/10",
                       positionChange === 'worsened' && "bg-red-900/10"
                     )}
+                    style={{
+                      background: `linear-gradient(90deg, #${driver?.team_colour || 'FFFFFF'}15 0%, rgba(21, 21, 30, 0.3) 100%)`
+                    }}
                   >
-                    <TableCell className="py-0 px-2 font-mono text-center">
+                    <TableCell className="py-0 px-1 font-mono text-center">
                       <div className="flex items-center">
-                        <span className="font-bold">{position.position}</span>
+                        <div 
+                          className="h-5 w-5 rounded-sm flex items-center justify-center text-xs"
+                          style={{ backgroundColor: `#${driver?.team_colour || 'FFFFFF'}40` }}
+                        >
+                          {position.position}
+                        </div>
                         <div className="ml-1">
                           {positionChange === 'improved' && (
                             <ChevronUp className="h-3 w-3 text-green-500" />
@@ -283,35 +322,28 @@ const LiveTiming: React.FC = () => {
                     </TableCell>
                     <TableCell className="py-0 px-2">
                       <div className="flex items-center">
-                        <div 
-                          className="w-1 h-6 mr-2 rounded-sm"
-                          style={{ backgroundColor: teamColor }}
-                        ></div>
                         <div>
                           <div className="flex items-center">
-                            <span className="font-medium text-sm">
+                            <span className="font-medium text-xs">
                               {driver?.name_acronym || `#${position.driver_number}`}
                             </span>
                             <span className="ml-2 text-xs text-f1-silver/60">
                               {position.driver_number}
                             </span>
                           </div>
-                          <div className="text-xs text-f1-silver/70">
-                            {driver?.team_name || '-'}
-                          </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="py-0 px-2 text-right font-mono text-xs hidden sm:table-cell">
+                    <TableCell className="py-0 px-1 text-right font-mono text-xs hidden sm:table-cell">
                       {driverLap?.lap_duration ? formatLapTime(driverLap.lap_duration) : '-'}
                     </TableCell>
-                    <TableCell className="py-0 px-2 text-right font-mono text-xs hidden md:table-cell">
+                    <TableCell className="py-0 px-1 text-right font-mono text-xs hidden md:table-cell">
                       {driverLap?.duration_sector_1 ? formatLapTime(driverLap.duration_sector_1) : '-'}
                     </TableCell>
-                    <TableCell className="py-0 px-2 text-right font-mono text-xs hidden md:table-cell">
+                    <TableCell className="py-0 px-1 text-right font-mono text-xs hidden md:table-cell">
                       {driverLap?.duration_sector_2 ? formatLapTime(driverLap.duration_sector_2) : '-'}
                     </TableCell>
-                    <TableCell className="py-0 px-2 text-right font-mono text-xs hidden md:table-cell">
+                    <TableCell className="py-0 px-1 text-right font-mono text-xs hidden md:table-cell">
                       {driverLap?.duration_sector_3 ? formatLapTime(driverLap.duration_sector_3) : '-'}
                     </TableCell>
                   </TableRow>

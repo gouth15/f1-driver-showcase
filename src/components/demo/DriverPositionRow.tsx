@@ -79,20 +79,20 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
   return (
     <div 
       className={cn(
-        "grid grid-cols-12 gap-1 p-1 rounded-md items-center transition-all",
-        "bg-f1-navy/30 border-l-4 h-8 relative",
+        "grid grid-cols-12 gap-x-0 rounded-md items-center transition-all",
+        "bg-f1-navy/30 border-l-4 h-7 relative",
         animatePosition && positionChange === 'improved' && "animate-position-improved",
         animatePosition && positionChange === 'worsened' && "animate-position-worsened"
       )}
       style={{ 
         borderLeftColor: teamColor,
-        background: `linear-gradient(90deg, ${teamColor}10 0%, rgba(21, 21, 30, 0.3) 100%)`,
+        background: `linear-gradient(90deg, ${teamColor}15 0%, rgba(21, 21, 30, 0.3) 100%)`,
       }}
     >
       {/* Position + Change Indicator */}
-      <div className="col-span-1 font-bold flex items-center">
+      <div className="col-span-1 font-bold flex items-center justify-center">
         <div 
-          className="h-6 w-6 rounded-sm flex items-center justify-center text-xs"
+          className="h-5 w-5 rounded-sm flex items-center justify-center text-xs"
           style={{ backgroundColor: `${teamColor}40` }}
         >
           {position.position}
@@ -114,7 +114,7 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
       
       {/* Last Lap */}
       <div className={cn(
-        "col-span-2 font-mono text-xs",
+        "col-span-2 font-mono text-xs text-right pr-2",
         driverLap && getLapTimeClass(driverLap.lap_duration, driverBest?.personal, overallBestLap)
       )}>
         {driverLap ? formatLapTime(driverLap.lap_duration) : '-'}
@@ -122,7 +122,7 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
       
       {/* S1 */}
       <div className={cn(
-        "col-span-2 font-mono text-xs",
+        "col-span-2 font-mono text-xs text-right pr-2",
         driverLap && getLapTimeClass(driverLap.duration_sector_1, driverBest?.s1_personal, overallBestS1)
       )}>
         {driverLap ? formatLapTime(driverLap.duration_sector_1) : '-'}
@@ -130,7 +130,7 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
       
       {/* S2 */}
       <div className={cn(
-        "col-span-2 font-mono text-xs",
+        "col-span-2 font-mono text-xs text-right pr-2", 
         driverLap && getLapTimeClass(driverLap.duration_sector_2, driverBest?.s2_personal, overallBestS2)
       )}>
         {driverLap ? formatLapTime(driverLap.duration_sector_2) : '-'}
@@ -138,7 +138,7 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
       
       {/* S3 */}
       <div className={cn(
-        "col-span-2 font-mono text-xs",
+        "col-span-2 font-mono text-xs text-right pr-2",
         driverLap && getLapTimeClass(driverLap.duration_sector_3, driverBest?.s3_personal, overallBestS3)
       )}>
         {driverLap ? formatLapTime(driverLap.duration_sector_3) : '-'}
