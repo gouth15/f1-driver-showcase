@@ -79,33 +79,35 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
   return (
     <div 
       className={cn(
-        "grid grid-cols-12 gap-1 p-2 rounded-md border-l-4 items-center transition-all",
-        "bg-f1-navy/60 border-f1-silver/20 h-10 relative",
+        "grid grid-cols-12 gap-1 p-1 rounded-md items-center transition-all",
+        "bg-f1-navy/30 border-l-4 h-8 relative",
         animatePosition && positionChange === 'improved' && "animate-position-improved",
         animatePosition && positionChange === 'worsened' && "animate-position-worsened"
       )}
       style={{ 
         borderLeftColor: teamColor,
+        background: `linear-gradient(90deg, ${teamColor}10 0%, rgba(21, 21, 30, 0.3) 100%)`,
       }}
     >
       {/* Position + Change Indicator */}
-      <div className="col-span-1 font-bold">
-        {position.position}
+      <div className="col-span-1 font-bold flex items-center">
+        <div 
+          className="h-6 w-6 rounded-sm flex items-center justify-center text-xs"
+          style={{ backgroundColor: `${teamColor}40` }}
+        >
+          {position.position}
+        </div>
         {positionChange === 'improved' && (
-          <ChevronUp className="h-3 w-3 text-green-400 inline ml-1" />
+          <ChevronUp className="h-3 w-3 text-green-400 -ml-1" />
         )}
         {positionChange === 'worsened' && (
-          <ChevronDown className="h-3 w-3 text-red-400 inline ml-1" />
+          <ChevronDown className="h-3 w-3 text-red-400 -ml-1" />
         )}
       </div>
       
       {/* Driver Name + Team */}
-      <div className="col-span-3 flex items-center">
-        <div 
-          className="h-5 w-1 rounded-sm mr-1"
-          style={{ backgroundColor: teamColor }}
-        ></div>
-        <span className="font-bold text-sm">
+      <div className="col-span-3 flex items-center overflow-hidden">
+        <span className="font-bold text-xs truncate">
           {driver ? driver.name_acronym : `#${position.driver_number}`}
         </span>
       </div>
