@@ -89,12 +89,12 @@ const LiveTimingDemo: React.FC = () => {
   };
   
   return (
-    <div className="min-h-screen bg-f1-navy text-white">
+    <div className="min-h-screen bg-f1-navy text-white overflow-hidden">
       <Navbar />
       
       <div className="h-14"></div>
       
-      {/* Race Control Message - Redesigned as banner */}
+      {/* Race Control Message - Animated Banner */}
       {demoState.messages.length > 0 && (
         <div className="sticky top-14 z-40 w-full animate-fade-in">
           <div className={cn(
@@ -125,7 +125,7 @@ const LiveTimingDemo: React.FC = () => {
         </div>
       )}
       
-      <div className="container mx-auto px-2 py-2">
+      <div className="container mx-auto px-2 py-1 max-h-[calc(100vh-70px)] overflow-hidden">
         <DemoControls 
           isRunning={isRunning}
           speed={speed}
@@ -137,19 +137,21 @@ const LiveTimingDemo: React.FC = () => {
           onReloadData={fetchApiData}
         />
         
-        <div className="text-xs font-mono bg-f1-navy/60 px-2 py-1 rounded mb-2 flex justify-between">
+        <div className="text-xs font-mono bg-f1-navy/60 px-2 py-1 rounded mb-1 flex justify-between">
           <span>{lapDataCount > 0 ? `Using real F1 data (session_key=9994)` : 'No data loaded'}</span>
           <span className="text-f1-silver/70">Sequential Data Demo</span>
         </div>
         
-        {demoState.positions.length > 0 && (
-          <DriverPositionsList 
-            positions={demoState.positions}
-            drivers={demoState.drivers}
-            lapData={demoState.lapData}
-            previousPositions={previousPositions}
-          />
-        )}
+        <div className="max-h-[calc(100vh-150px)] overflow-hidden">
+          {demoState.positions.length > 0 && (
+            <DriverPositionsList 
+              positions={demoState.positions}
+              drivers={demoState.drivers}
+              lapData={demoState.lapData}
+              previousPositions={previousPositions}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

@@ -24,7 +24,7 @@ interface DriverPositionRowProps {
   overallBestS1: number | null;
   overallBestS2: number | null;
   overallBestS3: number | null;
-  isFirst?: boolean; // New prop to highlight fastest lap
+  isFirst?: boolean; // Prop to highlight fastest lap
 }
 
 const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
@@ -42,6 +42,7 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
 }) => {
   const teamColor = driver?.team_colour ? `#${driver.team_colour}` : '#FFFFFF';
   const [animatePosition, setAnimatePosition] = useState(false);
+  const [animateFastestLap, setAnimateFastestLap] = useState(false);
   
   // Use display position if provided, otherwise use original position
   const positionToShow = displayPosition !== undefined ? displayPosition : position.position;
@@ -53,6 +54,15 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
       return () => clearTimeout(timer);
     }
   }, [position.position, positionChange]);
+  
+  // Effect for fastest lap animation
+  useEffect(() => {
+    if (isFirst && driverLap?.lap_duration && driverLap?.lap_duration === overallBestLap) {
+      setAnimateFastestLap(true);
+      const timer = setTimeout(() => setAnimateFastestLap(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isFirst, driverLap?.lap_duration, overallBestLap]);
   
   const formatLapTime = (seconds: number | undefined) => {
     if (!seconds) return '-';
@@ -87,21 +97,27 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
     <div 
       className={cn(
         "grid grid-cols-12 gap-x-0 rounded-md items-center transition-all",
-        "bg-f1-navy/30 border-l-4 h-6 relative",
+        "bg-f1-navy/30 border-l-4 h-5 relative", // Reduced height for compact display
         animatePosition && positionChange === 'improved' && "animate-position-improved",
         animatePosition && positionChange === 'worsened' && "animate-position-worsened",
-        isFirst && driverLap?.lap_duration && "border-r-2 border-r-purple-400"
+        isFirst && driverLap?.lap_duration && "border-r-2 border-r-purple-400",
+        animateFastestLap && "animate-pulse bg-purple-900/30"
       )}
       style={{ 
         borderLeftColor: teamColor,
-        background: `linear-gradient(90deg, ${teamColor}15 0%, rgba(21, 21, 30, 0.3) 100%)`,
+        background: animateFastestLap
+          ? `linear-gradient(90deg, ${teamColor}30, rgba(128, 0, 255, 0.3) 100%)`
+          : `linear-gradient(90deg, ${teamColor}15 0%, rgba(21, 21, 30, 0.3) 100%)`,
       }}
     >
       {/* Position + Change Indicator */}
       <div className="col-span-1 font-bold flex items-center justify-center">
         <div 
-          className="h-4 w-4 rounded-sm flex items-center justify-center text-xs"
-          style={{ backgroundColor: `${teamColor}40` }}
+          className={cn(
+            "h-4 w-4 rounded-sm flex items-center justify-center text-xs",
+            animateFastestLap && "bg-purple-500/50"
+          )}
+          style={{ backgroundColor: animateFastestLap ? 'rgba(128, 0, 255, 0.5)' : `${teamColor}40` }}
         >
           {positionToShow}
         </div>
@@ -115,14 +131,17 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
       
       {/* Driver Name + Team */}
       <div className="col-span-3 flex items-center overflow-hidden">
-        <span className="font-bold text-xs truncate">
+        <span className={cn(
+          "font-bold text-xs truncate",
+          animateFastestLap && "text-purple-300"
+        )}>
           {driver ? driver.name_acronym : `#${position.driver_number}`}
         </span>
       </div>
       
       {/* Last Lap */}
       <div className={cn(
-        "col-span-2 font-mono text-xs text-right pr-1",
+        "col-span-2 font-mono text-xs text-right pr-0.5", // Reduced padding
         driverLap && getLapTimeClass(driverLap.lap_duration, driverBest?.personal, overallBestLap),
         isFirst && driverLap?.lap_duration && "text-purple-400 font-bold"
       )}>
@@ -131,7 +150,7 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
       
       {/* S1 */}
       <div className={cn(
-        "col-span-2 font-mono text-xs text-right pr-1",
+        "col-span-2 font-mono text-xs text-right pr-0.5", // Reduced padding
         driverLap && getLapTimeClass(driverLap.duration_sector_1, driverBest?.s1_personal, overallBestS1)
       )}>
         {driverLap ? formatLapTime(driverLap.duration_sector_1) : '-'}
@@ -139,7 +158,7 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
       
       {/* S2 */}
       <div className={cn(
-        "col-span-2 font-mono text-xs text-right pr-1", 
+        "col-span-2 font-mono text-xs text-right pr-0.5", // Reduced padding
         driverLap && getLapTimeClass(driverLap.duration_sector_2, driverBest?.s2_personal, overallBestS2)
       )}>
         {driverLap ? formatLapTime(driverLap.duration_sector_2) : '-'}
@@ -147,7 +166,7 @@ const DriverPositionRow: React.FC<DriverPositionRowProps> = ({
       
       {/* S3 */}
       <div className={cn(
-        "col-span-2 font-mono text-xs text-right pr-1",
+        "col-span-2 font-mono text-xs text-right pr-0.5", // Reduced padding
         driverLap && getLapTimeClass(driverLap.duration_sector_3, driverBest?.s3_personal, overallBestS3)
       )}>
         {driverLap ? formatLapTime(driverLap.duration_sector_3) : '-'}

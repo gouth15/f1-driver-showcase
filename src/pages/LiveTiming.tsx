@@ -4,7 +4,6 @@ import { Clock, Flag, BellRing } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Navbar from '@/components/Navbar';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
@@ -17,6 +16,8 @@ const LiveTiming: React.FC = () => {
   const [isPolling, setIsPolling] = useState(true);
   const [latestMessage, setLatestMessage] = useState<RaceControlMessage | null>(null);
   const [showMessage, setShowMessage] = useState(false);
+  const [fastestLapDriver, setFastestLapDriver] = useState<number | null>(null);
+  const [showFastestLapAnimation, setShowFastestLapAnimation] = useState(false);
   const pollingIntervalRef = useRef<number | null>(null);
   const lastMessageTimeRef = useRef<string | null>(null);
   const { toast } = useToast();
@@ -75,18 +76,34 @@ const LiveTiming: React.FC = () => {
       const data: LapData[] = await response.json();
       
       const latestLapsByDriver: Record<number, LapData> = {};
+      let fastestLapTime = Number.MAX_VALUE;
+      let fastestDriver: number | null = null;
       
       data.forEach(lap => {
         if (!latestLapsByDriver[lap.driver_number] || 
             lap.lap_number > latestLapsByDriver[lap.driver_number].lap_number) {
           latestLapsByDriver[lap.driver_number] = lap;
+          
+          if (lap.lap_duration && lap.lap_duration < fastestLapTime) {
+            fastestLapTime = lap.lap_duration;
+            fastestDriver = lap.driver_number;
+          }
         }
       });
+      
+      if (fastestDriver !== null && fastestDriver !== fastestLapDriver) {
+        setFastestLapDriver(fastestDriver);
+        setShowFastestLapAnimation(true);
+        
+        setTimeout(() => {
+          setShowFastestLapAnimation(false);
+        }, 3000);
+      }
       
       setLapData(latestLapsByDriver);
     } catch (err) {
     }
-  }, []);
+  }, [fastestLapDriver]);
 
   const fetchDriverPositions = useCallback(async () => {
     try {
@@ -240,7 +257,7 @@ const LiveTiming: React.FC = () => {
         </div>
       )}
       
-      <div className="container mx-auto px-1 py-1 max-h-[calc(100vh-56px)] flex-1">
+      <div className="container mx-auto px-1 py-1 flex-1 overflow-hidden">
         <div className="mb-2 flex items-center justify-between flex-wrap gap-1">
           <div className="flex items-center gap-1">
             <button
@@ -279,21 +296,21 @@ const LiveTiming: React.FC = () => {
         
         {!loading && driverPositions.length > 0 && (
           <Table className="border-collapse">
-            <TableHeader className="bg-f1-navy/80">
+            <TableHeader className="bg-f1-navy/80 sticky top-0 z-10">
               <TableRow className="border-b border-f1-silver/20">
-                <TableHead className="py-0.5 px-1 text-xs w-10 h-5">Pos</TableHead>
-                <TableHead className="py-0.5 px-2 text-xs h-5">Driver</TableHead>
-                <TableHead className="py-0.5 px-1 text-xs text-right h-5 sm:table-cell">Lap Time</TableHead>
-                <TableHead className="py-0.5 px-1 text-xs text-right h-5 md:table-cell">S1</TableHead>
-                <TableHead className="py-0.5 px-1 text-xs text-right h-5 md:table-cell">S2</TableHead>
-                <TableHead className="py-0.5 px-1 text-xs text-right h-5 md:table-cell">S3</TableHead>
+                <TableHead className="py-0 px-1 text-xs w-8 h-4">#</TableHead>
+                <TableHead className="py-0 px-1 text-xs h-4">Driver</TableHead>
+                <TableHead className="py-0 px-1 text-xs text-right h-4 sm:table-cell">Time</TableHead>
+                <TableHead className="py-0 px-1 text-xs text-right h-4 md:table-cell">S1</TableHead>
+                <TableHead className="py-0 px-1 text-xs text-right h-4 md:table-cell">S2</TableHead>
+                <TableHead className="py-0 px-1 text-xs text-right h-4 md:table-cell">S3</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="max-h-[calc(100vh-120px)]">
               {driverPositions.map((position, index) => {
                 const driver = drivers.find(d => d.driver_number === position.driver_number);
                 const driverLap = lapData[position.driver_number];
-                const teamColor = driver?.team_colour || '#FFFFFF';
+                const teamColor = driver?.team_colour || 'FFFFFF';
                 
                 const displayPosition = index + 1;
                 
@@ -305,55 +322,66 @@ const LiveTiming: React.FC = () => {
                       ? 'worsened' 
                       : 'unchanged'
                   : 'unchanged';
+                  
+                const isFastest = showFastestLapAnimation && position.driver_number === fastestLapDriver;
                 
                 return (
                   <TableRow 
                     key={position.driver_number}
                     className={cn(
-                      "border-b border-f1-silver/10 hover:bg-f1-navy/60 h-6",
+                      "border-b border-f1-silver/10 h-5 transition-all",
                       positionChange === 'improved' && "bg-green-900/10",
-                      positionChange === 'worsened' && "bg-red-900/10"
+                      positionChange === 'worsened' && "bg-red-900/10",
+                      isFastest && "animate-pulse bg-purple-900/30"
                     )}
                     style={{
-                      background: `linear-gradient(90deg, #${driver?.team_colour || 'FFFFFF'}15 0%, rgba(21, 21, 30, 0.3) 100%)`
+                      background: isFastest 
+                        ? `linear-gradient(90deg, #${teamColor}30, rgba(128, 0, 255, 0.3) 100%)`
+                        : `linear-gradient(90deg, #${teamColor}15 0%, rgba(21, 21, 30, 0.3) 100%)`
                     }}
                   >
-                    <TableCell className="py-0 px-1 font-mono text-center">
+                    <TableCell className="py-0 px-0.5 font-mono text-center">
                       <div 
-                        className="h-4 w-4 rounded-sm flex items-center justify-center text-xs"
-                        style={{ backgroundColor: `#${driver?.team_colour || 'FFFFFF'}40` }}
+                        className={cn(
+                          "h-4 w-4 rounded-sm flex items-center justify-center text-xs",
+                          isFastest && "bg-purple-500/50"
+                        )}
+                        style={{ backgroundColor: isFastest ? 'rgba(128, 0, 255, 0.5)' : `#${teamColor}40` }}
                       >
                         {displayPosition}
                       </div>
                     </TableCell>
-                    <TableCell className="py-0 px-1">
+                    <TableCell className="py-0 px-0.5">
                       <div className="flex items-center">
                         <div>
                           <div className="flex items-center">
-                            <span className="font-medium text-xs">
+                            <span className={cn(
+                              "font-medium text-xs", 
+                              isFastest && "text-purple-300"
+                            )}>
                               {driver?.name_acronym || `#${position.driver_number}`}
                             </span>
-                            <span className="ml-2 text-xs text-f1-silver/60">
+                            <span className="ml-1 text-[0.65rem] text-f1-silver/60">
                               {position.driver_number}
                             </span>
                           </div>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="py-0 px-1 text-right font-mono text-xs sm:table-cell">
+                    <TableCell className="py-0 px-0.5 text-right font-mono text-xs sm:table-cell">
                       <span className={cn(
-                        index === 0 && driverLap?.lap_duration && "text-purple-400 font-bold",
+                        (index === 0 || isFastest) && driverLap?.lap_duration && "text-purple-400 font-bold",
                       )}>
                         {driverLap?.lap_duration ? formatLapTime(driverLap.lap_duration) : '-'}
                       </span>
                     </TableCell>
-                    <TableCell className="py-0 px-1 text-right font-mono text-xs hidden md:table-cell">
+                    <TableCell className="py-0 px-0.5 text-right font-mono text-xs hidden md:table-cell">
                       {driverLap?.duration_sector_1 ? formatLapTime(driverLap.duration_sector_1) : '-'}
                     </TableCell>
-                    <TableCell className="py-0 px-1 text-right font-mono text-xs hidden md:table-cell">
+                    <TableCell className="py-0 px-0.5 text-right font-mono text-xs hidden md:table-cell">
                       {driverLap?.duration_sector_2 ? formatLapTime(driverLap.duration_sector_2) : '-'}
                     </TableCell>
-                    <TableCell className="py-0 px-1 text-right font-mono text-xs hidden md:table-cell">
+                    <TableCell className="py-0 px-0.5 text-right font-mono text-xs hidden md:table-cell">
                       {driverLap?.duration_sector_3 ? formatLapTime(driverLap.duration_sector_3) : '-'}
                     </TableCell>
                   </TableRow>

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Driver, DriverPosition, LapData } from '@/types/f1';
 import DriverPositionRow from './DriverPositionRow';
@@ -173,17 +172,17 @@ const DriverPositionsList: React.FC<DriverPositionsListProps> = ({
   };
 
   return (
-    <div className="space-y-1">
-      <div className="grid grid-cols-12 gap-1 text-xs text-f1-silver/80 mb-1 px-1">
-        <div className="col-span-1">Pos</div>
+    <div className="space-y-0.5">
+      <div className="grid grid-cols-12 gap-1 text-xs text-f1-silver/80 mb-0.5 px-1">
+        <div className="col-span-1">#</div>
         <div className="col-span-3">Driver</div>
-        <div className="col-span-2">Last Lap</div>
-        <div className="col-span-2">S1</div>
-        <div className="col-span-2">S2</div>
-        <div className="col-span-2">S3</div>
+        <div className="col-span-2 text-right">Lap</div>
+        <div className="col-span-2 text-right">S1</div>
+        <div className="col-span-2 text-right">S2</div>
+        <div className="col-span-2 text-right">S3</div>
       </div>
       
-      <div className="space-y-1 relative">
+      <div className="space-y-0.5">
         {sortedPositions.map((position, index) => {
           const driver = getDriverByNumber(position.driver_number);
           const positionChange = getPositionChange(position.driver_number, position.position);
