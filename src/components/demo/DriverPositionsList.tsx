@@ -31,6 +31,35 @@ const DriverPositionsList: React.FC<DriverPositionsListProps> = ({
   const [overallBestS1, setOverallBestS1] = useState<number | null>(null);
   const [overallBestS2, setOverallBestS2] = useState<number | null>(null);
   const [overallBestS3, setOverallBestS3] = useState<number | null>(null);
+  
+  // Sort positions by lap time for qualifying mode
+  const [sortedPositions, setSortedPositions] = useState<DriverPosition[]>([]);
+
+  useEffect(() => {
+    // Sort positions by lap time if lap data is available
+    if (Object.keys(lapData).length > 0) {
+      const sorted = [...positions].sort((a, b) => {
+        const aLapTime = lapData[a.driver_number]?.lap_duration;
+        const bLapTime = lapData[b.driver_number]?.lap_duration;
+        
+        // If both have lap times, sort by fastest
+        if (aLapTime && bLapTime) {
+          return aLapTime - bLapTime;
+        }
+        
+        // If only one has lap time, it goes first
+        if (aLapTime) return -1;
+        if (bLapTime) return 1;
+        
+        // If neither has lap time, maintain position order
+        return a.position - b.position;
+      });
+      
+      setSortedPositions(sorted);
+    } else {
+      setSortedPositions([...positions]);
+    }
+  }, [positions, lapData]);
 
   useEffect(() => {
     // Collect all drivers with position changes
@@ -145,7 +174,7 @@ const DriverPositionsList: React.FC<DriverPositionsListProps> = ({
 
   return (
     <div className="space-y-1">
-      <div className="grid grid-cols-12 gap-1 text-xs text-f1-silver/80 mb-1 px-2">
+      <div className="grid grid-cols-12 gap-1 text-xs text-f1-silver/80 mb-1 px-1">
         <div className="col-span-1">Pos</div>
         <div className="col-span-3">Driver</div>
         <div className="col-span-2">Last Lap</div>
@@ -155,15 +184,17 @@ const DriverPositionsList: React.FC<DriverPositionsListProps> = ({
       </div>
       
       <div className="space-y-1 relative">
-        {positions.map((position) => {
+        {sortedPositions.map((position, index) => {
           const driver = getDriverByNumber(position.driver_number);
           const positionChange = getPositionChange(position.driver_number, position.position);
           const driverLap = lapData[position.driver_number];
+          const displayPosition = index + 1; // Position based on sort order
           
           return (
             <DriverPositionRow
               key={position.driver_number}
               position={position}
+              displayPosition={displayPosition}
               driver={driver}
               positionChange={positionChange}
               driverLap={driverLap}
@@ -172,6 +203,7 @@ const DriverPositionsList: React.FC<DriverPositionsListProps> = ({
               overallBestS1={overallBestS1}
               overallBestS2={overallBestS2}
               overallBestS3={overallBestS3}
+              isFirst={index === 0}
             />
           );
         })}

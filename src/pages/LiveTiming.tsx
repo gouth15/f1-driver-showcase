@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { RaceControlMessage, DriverPosition, Driver, LapData } from '@/types/f1';
-import { Clock, ChevronUp, ChevronDown, Flag, BellRing } from 'lucide-react';
+import { Clock, Flag, BellRing } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import Navbar from '@/components/Navbar';
 import { cn } from '@/lib/utils';
@@ -43,18 +43,12 @@ const LiveTiming: React.FC = () => {
           setShowMessage(true);
           setTimeout(() => setShowMessage(false), 10000);
           
-          toast({
-            title: "Race Control",
-            description: sortedMessages[0].message,
-            duration: 5000,
-          });
-          
           lastMessageTimeRef.current = sortedMessages[0].date;
         }
       }
     } catch (err) {
     }
-  }, [toast]);
+  }, []);
 
   const fetchDrivers = useCallback(async () => {
     try {
@@ -115,7 +109,7 @@ const LiveTiming: React.FC = () => {
         }
       });
       
-      const sortedPositions = Object.values(latestPositionsByDriver).sort((a, b) => a.position - b.position);
+      let sortedPositions = Object.values(latestPositionsByDriver);
       
       driverPositions.forEach(dp => {
         currentPositionMap[dp.driver_number] = dp.position;
@@ -152,6 +146,26 @@ const LiveTiming: React.FC = () => {
       }
     };
   }, [fetchRaceControlMessages, fetchDrivers, fetchDriverPositions, fetchLapData, isPolling]);
+
+  useEffect(() => {
+    if (Object.keys(lapData).length > 0 && driverPositions.length > 0) {
+      const sortedByLapTime = [...driverPositions].sort((a, b) => {
+        const aLapTime = lapData[a.driver_number]?.lap_duration;
+        const bLapTime = lapData[b.driver_number]?.lap_duration;
+        
+        if (aLapTime && bLapTime) {
+          return aLapTime - bLapTime;
+        }
+        
+        if (aLapTime) return -1;
+        if (bLapTime) return 1;
+        
+        return a.position - b.position;
+      });
+      
+      setDriverPositions(sortedByLapTime);
+    }
+  }, [lapData, driverPositions.length]);
 
   const getPositionChange = (driverNumber: number, currentPosition: number): 'improved' | 'worsened' | 'unchanged' => {
     const prevPosition = previousPositions[driverNumber];
@@ -197,33 +211,29 @@ const LiveTiming: React.FC = () => {
       <div className="h-14"></div>
       
       {showMessage && latestMessage && (
-        <div className={cn(
-          "fixed top-16 left-0 right-0 z-50 flex justify-center animate-fade-in",
-          "px-2 transition-opacity duration-300",
-          showMessage ? "opacity-100" : "opacity-0"
-        )}>
+        <div className="sticky top-14 z-40 w-full animate-fade-in">
           <div className={cn(
-            "bg-gradient-to-r from-purple-600 to-blue-600 rounded-md shadow-lg",
-            "border border-purple-400 max-w-3xl w-full py-2 px-4",
+            "bg-gradient-to-r from-purple-700 via-blue-600 to-purple-700 shadow-lg",
+            "border-t border-b border-purple-400/50 py-2 px-3",
             "animate-enter pulse"
           )}>
-            <div className="flex items-start gap-2">
-              <div className="flex-shrink-0 mt-0.5">
-                {latestMessage.flag === "yellow" ? (
-                  <Flag className="h-5 w-5 text-yellow-300" />
-                ) : latestMessage.flag === "red" ? (
-                  <Flag className="h-5 w-5 text-red-500" />
-                ) : (
-                  <BellRing className="h-5 w-5 text-yellow-300 animate-pulse" />
-                )}
-              </div>
-              <div className="flex-1">
+            <div className="flex items-center justify-between container mx-auto max-w-7xl">
+              <div className="flex items-center gap-2">
+                <div className="flex-shrink-0">
+                  {latestMessage.flag === "yellow" ? (
+                    <Flag className="h-5 w-5 text-yellow-300" />
+                  ) : latestMessage.flag === "red" ? (
+                    <Flag className="h-5 w-5 text-red-500" />
+                  ) : (
+                    <BellRing className="h-5 w-5 text-yellow-300 animate-pulse" />
+                  )}
+                </div>
                 <div className="font-bold text-sm">
                   Race Control | {formatTime(latestMessage.date)}
                 </div>
-                <div className="text-white text-sm mt-1">
-                  {latestMessage.message}
-                </div>
+              </div>
+              <div className="text-white text-sm font-medium flex-1 ml-4">
+                {latestMessage.message}
               </div>
             </div>
           </div>
@@ -256,6 +266,9 @@ const LiveTiming: React.FC = () => {
               </button>
             )}
           </div>
+          <div className="text-xs text-f1-silver/70">
+            Qualifying Mode: Sorted by Fastest Lap
+          </div>
         </div>
         
         {loading && (
@@ -268,24 +281,27 @@ const LiveTiming: React.FC = () => {
           <Table className="border-collapse">
             <TableHeader className="bg-f1-navy/80">
               <TableRow className="border-b border-f1-silver/20">
-                <TableHead className="py-0.5 px-2 text-xs w-12 h-6">Pos</TableHead>
-                <TableHead className="py-0.5 px-2 text-xs h-6">Driver</TableHead>
-                <TableHead className="py-0.5 px-2 text-xs text-right hidden sm:table-cell h-6">Last Lap</TableHead>
-                <TableHead className="py-0.5 px-2 text-xs text-right hidden md:table-cell h-6">S1</TableHead>
-                <TableHead className="py-0.5 px-2 text-xs text-right hidden md:table-cell h-6">S2</TableHead>
-                <TableHead className="py-0.5 px-2 text-xs text-right hidden md:table-cell h-6">S3</TableHead>
+                <TableHead className="py-0.5 px-1 text-xs w-10 h-5">Pos</TableHead>
+                <TableHead className="py-0.5 px-2 text-xs h-5">Driver</TableHead>
+                <TableHead className="py-0.5 px-1 text-xs text-right h-5 sm:table-cell">Lap Time</TableHead>
+                <TableHead className="py-0.5 px-1 text-xs text-right h-5 md:table-cell">S1</TableHead>
+                <TableHead className="py-0.5 px-1 text-xs text-right h-5 md:table-cell">S2</TableHead>
+                <TableHead className="py-0.5 px-1 text-xs text-right h-5 md:table-cell">S3</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {driverPositions.map((position) => {
+              {driverPositions.map((position, index) => {
                 const driver = drivers.find(d => d.driver_number === position.driver_number);
                 const driverLap = lapData[position.driver_number];
-                const prevPosition = previousPositions[position.driver_number];
                 const teamColor = driver?.team_colour || '#FFFFFF';
+                
+                const displayPosition = index + 1;
+                
+                const prevPosition = previousPositions[position.driver_number];
                 const positionChange = prevPosition !== undefined 
-                  ? position.position < prevPosition 
+                  ? displayPosition < prevPosition 
                     ? 'improved' 
-                    : position.position > prevPosition 
+                    : displayPosition > prevPosition 
                       ? 'worsened' 
                       : 'unchanged'
                   : 'unchanged';
@@ -294,7 +310,7 @@ const LiveTiming: React.FC = () => {
                   <TableRow 
                     key={position.driver_number}
                     className={cn(
-                      "border-b border-f1-silver/10 hover:bg-f1-navy/60 h-7",
+                      "border-b border-f1-silver/10 hover:bg-f1-navy/60 h-6",
                       positionChange === 'improved' && "bg-green-900/10",
                       positionChange === 'worsened' && "bg-red-900/10"
                     )}
@@ -303,24 +319,14 @@ const LiveTiming: React.FC = () => {
                     }}
                   >
                     <TableCell className="py-0 px-1 font-mono text-center">
-                      <div className="flex items-center">
-                        <div 
-                          className="h-5 w-5 rounded-sm flex items-center justify-center text-xs"
-                          style={{ backgroundColor: `#${driver?.team_colour || 'FFFFFF'}40` }}
-                        >
-                          {position.position}
-                        </div>
-                        <div className="ml-1">
-                          {positionChange === 'improved' && (
-                            <ChevronUp className="h-3 w-3 text-green-500" />
-                          )}
-                          {positionChange === 'worsened' && (
-                            <ChevronDown className="h-3 w-3 text-red-500" />
-                          )}
-                        </div>
+                      <div 
+                        className="h-4 w-4 rounded-sm flex items-center justify-center text-xs"
+                        style={{ backgroundColor: `#${driver?.team_colour || 'FFFFFF'}40` }}
+                      >
+                        {displayPosition}
                       </div>
                     </TableCell>
-                    <TableCell className="py-0 px-2">
+                    <TableCell className="py-0 px-1">
                       <div className="flex items-center">
                         <div>
                           <div className="flex items-center">
@@ -334,8 +340,12 @@ const LiveTiming: React.FC = () => {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="py-0 px-1 text-right font-mono text-xs hidden sm:table-cell">
-                      {driverLap?.lap_duration ? formatLapTime(driverLap.lap_duration) : '-'}
+                    <TableCell className="py-0 px-1 text-right font-mono text-xs sm:table-cell">
+                      <span className={cn(
+                        index === 0 && driverLap?.lap_duration && "text-purple-400 font-bold",
+                      )}>
+                        {driverLap?.lap_duration ? formatLapTime(driverLap.lap_duration) : '-'}
+                      </span>
                     </TableCell>
                     <TableCell className="py-0 px-1 text-right font-mono text-xs hidden md:table-cell">
                       {driverLap?.duration_sector_1 ? formatLapTime(driverLap.duration_sector_1) : '-'}

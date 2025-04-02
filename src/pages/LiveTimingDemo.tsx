@@ -92,33 +92,33 @@ const LiveTimingDemo: React.FC = () => {
     <div className="min-h-screen bg-f1-navy text-white">
       <Navbar />
       
-      <div className="h-16"></div>
+      <div className="h-14"></div>
       
-      {/* Race Control Message - Eye-catching */}
+      {/* Race Control Message - Redesigned as banner */}
       {demoState.messages.length > 0 && (
-        <div className="fixed top-16 left-0 right-0 z-50 flex justify-center animate-fade-in px-2">
+        <div className="sticky top-14 z-40 w-full animate-fade-in">
           <div className={cn(
-            "bg-gradient-to-r from-purple-600 to-blue-600 rounded-md shadow-lg",
-            "border border-purple-400 max-w-3xl w-full py-2 px-4",
+            "bg-gradient-to-r from-purple-700 via-blue-600 to-purple-700 shadow-lg",
+            "border-t border-b border-purple-400/50 py-2 px-3",
             "animate-enter pulse"
           )}>
-            <div className="flex items-start gap-2">
-              <div className="flex-shrink-0 mt-0.5">
-                {demoState.messages[0].flag === "yellow" ? (
-                  <Flag className="h-5 w-5 text-yellow-300" />
-                ) : demoState.messages[0].flag === "red" ? (
-                  <Flag className="h-5 w-5 text-red-500" />
-                ) : (
-                  <BellRing className="h-5 w-5 text-yellow-300 animate-pulse" />
-                )}
-              </div>
-              <div className="flex-1">
+            <div className="flex items-center justify-between container mx-auto max-w-7xl">
+              <div className="flex items-center gap-2">
+                <div className="flex-shrink-0">
+                  {demoState.messages[0].flag === "yellow" ? (
+                    <Flag className="h-5 w-5 text-yellow-300" />
+                  ) : demoState.messages[0].flag === "red" ? (
+                    <Flag className="h-5 w-5 text-red-500" />
+                  ) : (
+                    <BellRing className="h-5 w-5 text-yellow-300 animate-pulse" />
+                  )}
+                </div>
                 <div className="font-bold text-sm">
                   Race Control | {formatTime(demoState.messages[0].date)}
                 </div>
-                <div className="text-white text-sm mt-1">
-                  {demoState.messages[0].message}
-                </div>
+              </div>
+              <div className="text-white text-sm font-medium flex-1 ml-4">
+                {demoState.messages[0].message}
               </div>
             </div>
           </div>
